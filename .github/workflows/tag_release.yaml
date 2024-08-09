@@ -1,0 +1,28 @@
+name: Tag & Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'VERSION'
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: zekihan.sdash
+    steps:
+      - name: Check Out The Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Commit and push changes
+        run: |
+          chmod +x .github/scripts/release_version.sh
+          bash .github/scripts/release_version.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
