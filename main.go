@@ -20,8 +20,13 @@ func main() {
 
 	stdChain := middleware.New(middleware.Loging)
 
-	http.Handle("/ping", stdChain.ThenFunc(routes.GetPing))
-	http.Handle("/health", stdChain.ThenFunc(routes.GetHealth))
+	http.Handle("/api/ping", stdChain.ThenFunc(routes.GetPing))
+	http.Handle("/api/health", stdChain.ThenFunc(routes.GetHealth))
+	http.Handle("/api/search", stdChain.ThenFunc(routes.GetSearch))
+
+	fsServer := http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets")))
+	http.Handle("/assets/", stdChain.ThenFunc(fsServer.ServeHTTP))
+
 	http.Handle("/", stdChain.ThenFunc(routes.GetDashboard))
 
 	go config.WatchConfigFile()

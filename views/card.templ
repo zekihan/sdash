@@ -1,18 +1,23 @@
 package views
 
-script withParameters(a string) {
+script cardOnClick(a string) {
 	console.log(a);
 	window.open(a, '_blank')
 }
 
 templ card(icon string, text string, link string) {
-	<div class="rounded-lg border border-gray-300 bg-white px-6 py-4 shadow-lg dark:border-gray-700 dark:bg-gray-800 transition-transform transform hover:scale-105 cursor-pointer" onClick={ withParameters(string(templ.URL(link))) }>
-		<div class="flex items-center space-x-4">
-			<div class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
+	<div
+		class="p-4 w-full max-w-sm"
+	>
+		<div
+			class="flex w-full h-40 rounded-lg h-full dark:bg-gray-800 bg-teal-400 p-8 flex-col cursor-pointer "
+			onclick={ cardOnClick(link) }
+		>
+			<div class="flex items-center justify-center">
 				@image(icon, text)
 			</div>
-			<div class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-				{ text }
+			<div class="mt-4">
+				<p class="text-white text-lg title-font font-medium text-center">{ text }</p>
 			</div>
 		</div>
 	</div>
@@ -20,9 +25,9 @@ templ card(icon string, text string, link string) {
 
 templ image(icon string, title string) {
 	if icon == "" {
-		<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg" version="1.1">
-			<text x="25" y="55" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="40" fill="black">{ string(title[0]) }</text>
-		</svg>
+		<div class="w-8 h-8 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center">
+			<h2 class="text-dark text-xlg title-font font-medium">{ string(title[0]) }</h2>
+		</div>
 	} else {
 		<img src={ icon } alt="icon" class="w-8 h-8"/>
 	}

@@ -60,8 +60,13 @@ run: build
 
 ## run: run the  application
 .PHONY: templ_live
-templ_live: build
+templ_live:
 	templ generate -path ./views --watch
+
+## run: run the  application
+.PHONY: tailwind_live
+tailwind_live:
+	tailwindcss -o assets/css/tailwind.css --watch
 
 ## run_live: run the application with reloading on file changes
 .PHONY: run_live
@@ -76,4 +81,4 @@ run_live:
 ## run/live: run the application with reloading on file changes
 .PHONY: run/live
 run/live:
-	make -j5 templ_live run_live
+	make -j3 templ_live tailwind_live run_live
