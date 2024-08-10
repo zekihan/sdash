@@ -1,0 +1,32 @@
+package views
+
+import "github.com/zekihan/sdash/config"
+
+templ Page(config *config.DashboardConfig) {
+	<!DOCTYPE html>
+	<html lang="en" class="dark">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<script src="https://cdn.tailwindcss.com"></script>
+			<script type="text/javascript">
+                tailwind.config = {
+                  darkMode: 'selector',
+                }
+            </script>
+			<title>Simple Dashboard</title>
+		</head>
+		<body>
+			<main></main>
+			<div class="dark flex h-screen overflow-hidden bg-white dark:bg-black">
+				<div class="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-4 md:gap-6 xl:grid-cols-6 2xl:gap-7.5">
+						for _, service := range config.Services {
+							@card(service.Icon, service.Title, service.URL)
+						}
+					</div>
+				</div>
+			</div>
+		</body>
+	</html>
+}

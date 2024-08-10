@@ -1,0 +1,75 @@
+orderGroupsVia: order
+orderServicesVia: title
+
+search:
+  from:
+    service:
+      - title
+      - location
+      - cluster
+      - tags
+    group:
+      - title
+
+groups:
+  applications:
+    title: Applications
+    order: 1
+  monitoring:
+    title: Monitoring
+    order: 2
+  links:
+    title: Links
+    order: 3
+
+services:
+  documentation:
+    title: Documentation
+    url: https://docs.example.com
+    icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/bookstack.svg
+    group: applications
+    location: example
+    cluster: demo
+    tags:
+      - docs
+      - knowledge
+
+  files:
+    title: File Storage
+    url: https://files.example.com
+    icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/nextcloud.svg
+    group: applications
+    location: example
+    cluster: demo
+    tags:
+      - files
+      - storage
+
+  metrics:
+    title: Metrics
+    url: https://metrics.example.com
+    icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/grafana.svg
+    group: monitoring
+    location: example
+    cluster: demo
+    tags:
+      - metrics
+      - monitoring
+
+  status:
+    title: Status
+    url: https://status.example.com
+    icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/gatus.svg
+    group: monitoring
+    tags:
+      - health
+      - uptime
+
+  github:
+    title: GitHub
+    url: https://github.com
+    icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/github.svg
+    group: links
+    tags:
+      - git
+      - development

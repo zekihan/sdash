@@ -2,12 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/a-h/templ"
 	log "github.com/sirupsen/logrus"
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/routes"
 	"github.com/zekihan/sdash/routes/middleware"
-	"github.com/zekihan/sdash/views"
 	"net/http"
 	"os"
 )
@@ -24,7 +22,10 @@ func main() {
 
 	http.Handle("/ping", stdChain.ThenFunc(routes.GetPing))
 	http.Handle("/health", stdChain.ThenFunc(routes.GetHealth))
-	http.Handle("/name", templ.Handler(views.Body("John")))
+	http.Handle("/", stdChain.ThenFunc(routes.GetDashboard))
+
+	go config.WatchConfigFile()
+
 	port := config.GetConfig().WebConfig.Port
 	host := config.GetConfig().WebConfig.Host
 	log.Infof("Starting server on %s:%d", host, port)
