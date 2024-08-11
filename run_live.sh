@@ -2,8 +2,8 @@
 
 templ generate -path ./views --watch &
 
-tailwindcss --config ./views/tailwind/tailwind.config.js \
-	-i ./views/tailwind/input.css \
+tailwindcss --config ./build/tailwind/tailwind.config.js \
+	-i ./build/tailwind/input.css \
 	-o assets/css/tailwind.css --watch &
 
 ${GO_EXECUTABLE} run github.com/air-verse/air@latest \
