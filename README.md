@@ -18,3 +18,7 @@ Technologies used in the project:
 *   htmx
 *   tailwindcss
 *   templ
+
+<h2>🛡️ License:</h2>
+
+This project is licensed under the GNU Affero General Public License v3.0
