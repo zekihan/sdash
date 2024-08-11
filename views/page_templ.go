@@ -8,7 +8,10 @@ package views
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/zekihan/sdash/config"
+import (
+	"github.com/zekihan/sdash/config"
+	"github.com/zekihan/sdash/utils"
+)
 
 func Page(config *config.DashboardConfig) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -28,7 +31,15 @@ func Page(config *config.DashboardConfig) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!doctype html><html lang=\"en\" class=\"dark\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><script src=\"/assets/js/htmx.js\"></script><link rel=\"stylesheet\" href=\"/assets/css/tailwind.css\"><link rel=\"stylesheet\" href=\"/assets/css/scroll.css\"><title>Simple Dashboard</title><script>\n                document.addEventListener('keydown', function(event) {\n                    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {\n                        const searchBar = document.getElementById('search')\n                        if (searchBar){\n                            if (searchBar.classList.contains('hidden')) {\n                                searchBar.classList.remove('hidden')\n                            }\n                            const searchInput = document.getElementById('search-input')\n                            if (searchInput) {\n                                searchInput.focus()\n                                scrollTo(0, 0)\n                            }\n                        }\n                        event.preventDefault();\n                    }\n                });\n            </script></head><body><main><div class=\"w-screen h-screen overflow-auto bg-white dark:bg-black p-4 md:p-6 2xl:p-10\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<!doctype html><html lang=\"en\" class=\"dark\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><script src=\"/assets/js/htmx.js\"></script>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = CSS().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<title>Simple Dashboard</title><script>\n                document.addEventListener('keydown', function(event) {\n                    if ((event.ctrlKey || event.metaKey) && event.key === 'f') {\n                        const searchBar = document.getElementById('search')\n                        if (searchBar){\n                            if (searchBar.classList.contains('hidden')) {\n                                searchBar.classList.remove('hidden')\n                            }\n                            const searchInput = document.getElementById('search-input')\n                            if (searchInput) {\n                                searchInput.focus()\n                                scrollTo(0, 0)\n                            }\n                        }\n                        event.preventDefault();\n                    }\n                });\n            </script></head><body><main><div class=\"w-screen h-screen overflow-auto bg-white dark:bg-black p-4 md:p-6 2xl:p-10\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -105,6 +116,39 @@ func CardGrid(config *config.DashboardConfig) templ.Component {
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
+		}
+		return templ_7745c5c3_Err
+	})
+}
+
+func CSS() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var4 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var4 == nil {
+			templ_7745c5c3_Var4 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		if utils.IsProduction() {
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<link rel=\"stylesheet\" href=\"/assets/css/tailwind.min.css\"><link rel=\"stylesheet\" href=\"/assets/css/scroll.min.css\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<link rel=\"stylesheet\" href=\"/assets/css/tailwind.css\"><link rel=\"stylesheet\" href=\"/assets/css/scroll.css\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
 		return templ_7745c5c3_Err
 	})

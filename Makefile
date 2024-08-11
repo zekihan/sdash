@@ -43,14 +43,6 @@ test/cover:
 ## build: build the application
 .PHONY: build
 build:
-	# Include additional build steps, like TypeScript, SCSS or Tailwind compilation here...
-	templ generate -path ./views
-	${GO_EXECUTABLE} build -o=${TMP_DIR}/bin/${BINARY_NAME} ${MAIN_PACKAGE_PATH}
-
-## build: build the application
-.PHONY: build_live
-build_live:
-	# Include additional build steps, like TypeScript, SCSS or Tailwind compilation here...
 	${GO_EXECUTABLE} build -o=${TMP_DIR}/bin/${BINARY_NAME} ${MAIN_PACKAGE_PATH}
 
 ## run: run the  application

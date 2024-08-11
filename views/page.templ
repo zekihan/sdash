@@ -1,6 +1,9 @@
 package views
 
-import "github.com/zekihan/sdash/config"
+import (
+	"github.com/zekihan/sdash/config"
+	"github.com/zekihan/sdash/utils"
+)
 
 templ Page(config *config.DashboardConfig) {
 	<!DOCTYPE html>
@@ -9,8 +12,7 @@ templ Page(config *config.DashboardConfig) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<script src="/assets/js/htmx.js"></script>
-			<link rel="stylesheet" href="/assets/css/tailwind.css"/>
-			<link rel="stylesheet" href="/assets/css/scroll.css"/>
+			@CSS()
 			<title>Simple Dashboard</title>
 			<script>
                 document.addEventListener('keydown', function(event) {
@@ -74,4 +76,14 @@ templ CardGrid(config *config.DashboardConfig) {
 			@card(service.Key, service.Icon, service.Title, service.URL)
 		}
 	</div>
+}
+
+templ CSS() {
+	if utils.IsProduction() {
+		<link rel="stylesheet" href="/assets/css/tailwind.min.css"/>
+		<link rel="stylesheet" href="/assets/css/scroll.min.css"/>
+	} else {
+		<link rel="stylesheet" href="/assets/css/tailwind.css"/>
+		<link rel="stylesheet" href="/assets/css/scroll.css"/>
+	}
 }

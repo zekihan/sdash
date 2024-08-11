@@ -1,12 +1,13 @@
 version: '3.8'
 
 services:
-  external-secrets-sops:
+  sdash:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "33000:33000"
     volumes:
       - ./config.yaml:/config.yaml
+      - ./dashboard.yaml:/dashboard.yaml
     restart: unless-stopped

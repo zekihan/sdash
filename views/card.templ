@@ -8,7 +8,7 @@ script cardOnClick(a string) {
 
 templ card(key string, icon string, text string, link string) {
 	<div
-		id={ fmt.Sprintf("card-%d", key) }
+		id={ fmt.Sprintf("card-%s", key) }
 		class="p-4 w-full max-w-sm"
 	>
 		<div

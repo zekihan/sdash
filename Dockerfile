@@ -1,12 +1,33 @@
-FROM golang:1.22.6-alpine AS builder
+# First stage: Tailwind CSS build
+FROM docker.io/node:22-alpine AS tailwind
+WORKDIR /app
 
-ARG GITHUB_TOKEN
+RUN npm install -D tailwindcss cssnano postcss postcss-cli
 
-# Setup
-RUN mkdir -p /go/src/github.com/zekihan/sdash
-WORKDIR /go/src/github.com/zekihan/sdash
+COPY build ./build
+COPY views ./views
+COPY assets/css ./assets/css
 
-RUN apk add --no-cache git ca-certificates make
+ENV NODE_ENV=production
+
+RUN npx tailwindcss --config ./build/tailwind/tailwind.config.js \
+                -i ./build/tailwind/input.css \
+                -o assets/css/tailwind.css
+
+RUN npx postcss --config ./build/csspostprocess/postcss.config.js \
+    assets/css/*.css \
+    --base assets/css \
+    --dir assets/css \
+    --ext ".min.css"
+
+FROM ghcr.io/a-h/templ:v0.2.747 AS templ
+COPY --chown=65532:65532 . /app
+WORKDIR /app
+RUN ["templ", "generate", "-path", "./views"]
+
+FROM docker.io/golang:1.22.6 AS builder
+COPY --from=templ /app /app
+WORKDIR /app
 
 COPY go.mod .
 COPY go.sum .
@@ -17,11 +38,12 @@ RUN go mod download
 
 COPY . .
 
-RUN make build
+RUN ./build.sh
 
-# Copy into scratch container
 FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /go/src/github.com/zekihan/sdash/tmp/bin/sdash ./
+COPY ./assets ./assets
+COPY --from=tailwind /app/assets/css ./assets/css
+COPY --from=builder /app/tmp/bin/sdash ./
 
 ENTRYPOINT ["./sdash"]

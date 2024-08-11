@@ -6,6 +6,7 @@ import (
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/routes"
 	"github.com/zekihan/sdash/routes/middleware"
+	"github.com/zekihan/sdash/utils"
 	"net/http"
 	"os"
 )
@@ -17,6 +18,8 @@ func main() {
 	log.SetOutput(os.Stdout)
 	log.SetLevel(config.GetConfig().LogConfig.Level)
 	log.SetReportCaller(config.GetConfig().LogConfig.AddMethodName)
+
+	log.Infof("Starting SDash %s in %s", utils.GetVersion(), utils.GetEnvironment())
 
 	stdChain := middleware.New(middleware.Loging)
 
