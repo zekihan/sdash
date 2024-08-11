@@ -16,8 +16,9 @@ const defaultConfigFile = "config.yaml"
 var config *Config
 
 type Config struct {
-	WebConfig WebConfig `yaml:"web" env:", prefix=ESS__WEB_"`
-	LogConfig LogConfig `yaml:"log" env:", prefix=ESS__LOG_"`
+	WebConfig                            WebConfig `yaml:"web" env:", prefix=SDS__WEB_"`
+	LogConfig                            LogConfig `yaml:"log" env:", prefix=SDS__LOG_"`
+	ShouldContinueOnDashboardReloadError bool      `yaml:"continue_on_dashboard_error" env:"SDS__CONTINUE_ON_DASHBOARD_ERROR"`
 }
 
 type WebConfig struct {

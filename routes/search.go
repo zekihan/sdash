@@ -1,16 +1,16 @@
 package routes
 
 import (
-	"fmt"
 	"github.com/sahilm/fuzzy"
 	log "github.com/sirupsen/logrus"
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/views"
 	"net/http"
+	"sort"
 	"strings"
 )
 
-type Services []config.DashboardService
+type Services map[string]config.DashboardService
 
 func GetSearch(w http.ResponseWriter, r *http.Request) {
 	dashboard := config.GetDashboardConfig()
@@ -31,9 +31,30 @@ func GetSearch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s Services) Get(i int) config.DashboardService {
+	return s[s.GetKey(i)]
+}
+
+func (s Services) GetKey(i int) string {
+	keys := make([]string, 0)
+	for k := range s {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if i == 0 {
+			return k
+		}
+		i--
+	}
+	return ""
+}
+
 func (s Services) String(i int) string {
-	tags := strings.Join(s[i].Tags, "§§§")
-	return fmt.Sprintf("%s§§§%s§§§%s", s[i].Name, s[i].Title, tags)
+	item := s.Get(i)
+	searchables := []string{item.Title, item.Group, item.Location, item.Cluster}
+	searchables = append(searchables, item.Tags...)
+	return strings.Join(searchables, "§§§")
 }
 
 func (s Services) Len() int {
@@ -46,8 +67,9 @@ func FuzzySearch(query string, list Services) Services {
 
 	// Extract the matched strings
 	results := make(Services, len(matches))
-	for i, match := range matches {
-		results[i] = list[match.Index]
+	for _, match := range matches {
+		key := list.GetKey(match.Index)
+		results[key] = list[key]
 	}
 
 	return results

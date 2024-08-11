@@ -1,66 +1,85 @@
 package config
 
 import (
-	"context"
 	"github.com/fsnotify/fsnotify"
-	"github.com/sethvargo/go-envconfig"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"io"
-	"log"
 	"os"
 	"path"
+	"sort"
 	"sync"
 )
 
 const dashboardConfigFile = "dashboard.yaml"
 
 var (
-	dashboardMutex  sync.Mutex
+	dashboardMutex  sync.RWMutex
 	dashboardConfig *DashboardConfig
 )
 
 type DashboardConfig struct {
-	Services []DashboardService `yaml:"services"`
+	Services map[string]DashboardService `yaml:"services"`
+}
+
+func (c DashboardConfig) GetServices() []DashboardService {
+	keys := make([]string, 0)
+	for k := range c.Services {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	services := make([]DashboardService, 0)
+	for _, k := range keys {
+		service := c.Services[k]
+		service.Key = k
+		services = append(services, service)
+	}
+	return services
 }
 
 type DashboardService struct {
-	Name  string   `yaml:"name"`
-	Title string   `yaml:"title"`
-	URL   string   `yaml:"url"`
-	Icon  string   `yaml:"icon"`
-	Tags  []string `yaml:"tags"`
+	Key      string   `yaml:"-"`
+	Title    string   `yaml:"title"`
+	Group    string   `yaml:"group"`
+	Location string   `yaml:"location"`
+	Cluster  string   `yaml:"cluster"`
+	URL      string   `yaml:"url"`
+	Icon     string   `yaml:"icon"`
+	Tags     []string `yaml:"tags"`
 }
 
 func GetDashboardConfig() *DashboardConfig {
-	dashboardMutex.Lock()
-	defer dashboardMutex.Unlock()
-	if dashboardConfig == nil {
-		cfg := GetDashboardConfigFromFile()
-		ctx := context.Background()
-		if err := envconfig.Process(ctx, cfg); err != nil {
-			log.Fatal(err)
-		}
-		dashboardConfig = cfg
+	if GetCurrentDashboard() == nil {
+		reloadDashboard()
 	}
+	return GetCurrentDashboard()
+}
+
+func GetCurrentDashboard() *DashboardConfig {
+	dashboardMutex.RLock()
+	defer dashboardMutex.RUnlock()
 	return dashboardConfig
 }
 
-func GetDashboardConfigFromFile() *DashboardConfig {
+func GetDashboardConfigFromFile() (*DashboardConfig, error) {
 	config := &DashboardConfig{}
 	file, err := os.Open(getDashboardConfigFilePath())
 	if err != nil {
-		log.Fatalf("Failed to open config file: %v", err)
+		log.Errorf("Failed to open config file: %v", err)
+		return config, err
 	}
 	defer file.Close()
 	content, err := io.ReadAll(file)
 	if err != nil {
-		log.Fatalf("Failed to read config file: %v", err)
+		log.Errorf("Failed to read config file: %v", err)
+		return config, err
 	}
 	err = yaml.Unmarshal(content, config)
 	if err != nil {
-		log.Fatalf("Failed to parse config file: %v", err)
+		log.Errorf("Failed to parse config file: %v", err)
+		return config, err
 	}
-	return config
+	return config, nil
 }
 
 func WatchConfigFile() {
@@ -79,13 +98,24 @@ func WatchConfigFile() {
 		case event := <-watcher.Events:
 			if event.Has(fsnotify.Write) {
 				log.Printf("Config file changed: %s", event.Name)
-				dashboardMutex.Lock()
-				dashboardConfig = GetDashboardConfigFromFile()
-				dashboardMutex.Unlock()
+				reloadDashboard()
 			}
 		case err := <-watcher.Errors:
 			log.Printf("Watcher error: %v", err)
 		}
+	}
+}
+
+func reloadDashboard() {
+	dashboardMutex.Lock()
+	defer dashboardMutex.Unlock()
+	dashboardConfigFromFile, err := GetDashboardConfigFromFile()
+	if err == nil {
+		dashboardConfig = dashboardConfigFromFile
+		return
+	}
+	if !GetConfig().ShouldContinueOnDashboardReloadError {
+		panic(err)
 	}
 }
 

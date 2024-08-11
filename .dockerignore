@@ -23,6 +23,10 @@ go.work.sum
 tmp/
 .gitignore
 config.yaml
+dashboard.yaml
 docker-compose.yaml
 Dockerfile
 renovate.json
+views/*_templ.go
+views/*_templ.txt
+run_live.sh

@@ -1,16 +1,14 @@
 package views
 
-import (
-    "fmt"
-)
+import "fmt"
 
 script cardOnClick(a string) {
 	window.open(a, '_blank')
 }
 
-templ card(index int, icon string, text string, link string) {
+templ card(key string, icon string, text string, link string) {
 	<div
-        id={ fmt.Sprintf("card-%d", index) }
+		id={ fmt.Sprintf("card-%d", key) }
 		class="p-4 w-full max-w-sm"
 	>
 		<div

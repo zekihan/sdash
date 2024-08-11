@@ -3,3 +3,4 @@ web:
     port: 33000
 log:
     level: debug
+continue_on_dashboard_error: true
