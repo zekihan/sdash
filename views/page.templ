@@ -10,6 +10,7 @@ templ Page(config *config.DashboardConfig) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<script src="/assets/js/htmx.js"></script>
 			<link rel="stylesheet" href="/assets/css/tailwind.css"/>
+			<link rel="stylesheet" href="/assets/css/scroll.css"/>
 			<title>Simple Dashboard</title>
 			<script>
                 document.addEventListener('keydown', function(event) {
@@ -22,6 +23,7 @@ templ Page(config *config.DashboardConfig) {
                             const searchInput = document.getElementById('search-input')
                             if (searchInput) {
                                 searchInput.focus()
+                                scrollTo(0, 0)
                             }
                         }
                         event.preventDefault();
@@ -31,7 +33,7 @@ templ Page(config *config.DashboardConfig) {
 		</head>
 		<body>
 			<main>
-				<div class="w-screen h-screen overflow-hidden bg-white dark:bg-black p-4 md:p-6 2xl:p-10">
+				<div class="w-screen h-screen overflow-auto bg-white dark:bg-black p-4 md:p-6 2xl:p-10">
 					@Search()
 					@CardGrid(config)
 				</div>
