@@ -1,16 +1,21 @@
 package views
 
+import (
+    "fmt"
+)
+
 script cardOnClick(a string) {
 	console.log(a);
 	window.open(a, '_blank')
 }
 
-templ card(icon string, text string, link string) {
+templ card(index int, icon string, text string, link string) {
 	<div
+        id={ fmt.Sprintf("card-%d", index) }
 		class="p-4 w-full max-w-sm"
 	>
 		<div
-			class="flex w-full h-40 rounded-lg h-full dark:bg-gray-800 bg-teal-400 p-8 flex-col cursor-pointer "
+			class="flex w-full h-40 rounded-lg h-full dark:bg-gray-800 bg-teal-400 p-8 flex-col cursor-pointer transform transition-transform duration-300 hover:scale-105 hover:shadow-lg"
 			onclick={ cardOnClick(link) }
 		>
 			<div class="flex items-center justify-center">

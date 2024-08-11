@@ -3,6 +3,7 @@ package routes
 import (
 	"fmt"
 	"github.com/sahilm/fuzzy"
+	log "github.com/sirupsen/logrus"
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/views"
 	"net/http"
@@ -21,7 +22,12 @@ func GetSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	err := views.CardGrid(&config.DashboardConfig{Services: result}).Render(r.Context(), w)
 	if err != nil {
+		log.Error("Error rendering dashboard: ", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		_, err := w.Write([]byte("500 - Something bad happened!"))
+		if err != nil {
+			return
+		}
 	}
 }
 

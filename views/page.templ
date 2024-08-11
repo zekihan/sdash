@@ -70,8 +70,8 @@ templ CardGrid(config *config.DashboardConfig) {
 		id="card-grid"
 		class="flex flex-wrap justify-center mt-10"
 	>
-		for _, service := range config.Services {
-			@card(service.Icon, service.Title, service.URL)
+		for i, service := range config.Services {
+			@card(i, service.Icon, service.Title, service.URL)
 		}
 	</div>
 }
