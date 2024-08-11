@@ -58,27 +58,7 @@ build_live:
 run: build
 	${TMP_DIR}/bin/${BINARY_NAME}
 
-## run: run the  application
-.PHONY: templ_live
-templ_live:
-	templ generate -path ./views --watch
-
-## run: run the  application
-.PHONY: tailwind_live
-tailwind_live:
-	tailwindcss -o assets/css/tailwind.css --watch
-
-## run_live: run the application with reloading on file changes
-.PHONY: run_live
-run_live:
-	${GO_EXECUTABLE} run github.com/air-verse/air@latest \
-		--build.cmd "make build_live" --build.bin "${TMP_DIR}/bin/${BINARY_NAME}" --build.delay "100" \
-		--build.exclude_dir "" \
-		--build.exclude_file "dashboard.yaml, assets/css/tailwind.css" \
-		--build.include_ext "go, yaml" \
-		--misc.clean_on_exit "true"
-
 ## run/live: run the application with reloading on file changes
 .PHONY: run/live
 run/live:
-	make -j3 templ_live tailwind_live run_live
+	export GO_EXECUTABLE="${GO_EXECUTABLE}" && export TMP_DIR="${TMP_DIR}" && export BINARY_NAME="${BINARY_NAME}" && bash run_live.sh
