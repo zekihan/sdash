@@ -25,10 +25,10 @@ templ card(icon string, text string, link string) {
 
 templ image(icon string, title string) {
 	if icon == "" {
-		<div class="w-8 h-8 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center">
-			<h2 class="text-dark text-xlg title-font font-medium">{ string(title[0]) }</h2>
+		<div class="w-12 h-12 text-gray-400 rounded-full flex items-center justify-center">
+			<p class="text-blue-600 text-4xl font-bold">{ string(title[0]) }</p>
 		</div>
 	} else {
-		<img src={ icon } alt="icon" class="w-8 h-8"/>
+		<img src={ icon } alt="icon" class="w-12 h-12"/>
 	}
 }
