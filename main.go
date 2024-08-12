@@ -21,6 +21,8 @@ func main() {
 
 	log.Infof("Starting SDash %s in %s", utils.GetVersion(), utils.GetEnvironment())
 
+	go config.WatchConfigFile()
+
 	stdChain := middleware.New(middleware.Loging)
 
 	http.Handle("/api/ping", stdChain.ThenFunc(routes.GetPing))
@@ -31,8 +33,6 @@ func main() {
 	http.Handle("/assets/", stdChain.ThenFunc(fsServer.ServeHTTP))
 
 	http.Handle("/", stdChain.ThenFunc(routes.GetDashboard))
-
-	go config.WatchConfigFile()
 
 	port := config.GetConfig().WebConfig.Port
 	host := config.GetConfig().WebConfig.Host

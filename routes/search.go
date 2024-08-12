@@ -6,21 +6,20 @@ import (
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/views"
 	"net/http"
-	"sort"
 	"strings"
 )
 
-type Services map[string]config.DashboardService
+type Services []config.DashboardService
 
 func GetSearch(w http.ResponseWriter, r *http.Request) {
 	dashboard := config.GetDashboardConfig()
-	result := dashboard.Services
+	result := dashboard.ServicesList
 
 	query := r.URL.Query().Get("search")
 	if query != "" {
-		result = FuzzySearch(query, dashboard.Services)
+		result = FuzzySearch(query, result)
 	}
-	err := views.CardGrid(&config.DashboardConfig{Services: result}).Render(r.Context(), w)
+	err := views.CardGrid(&config.DashboardConfig{ServicesList: result}).Render(r.Context(), w)
 	if err != nil {
 		log.Error("Error rendering dashboard: ", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -31,30 +30,11 @@ func GetSearch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s Services) Get(i int) config.DashboardService {
-	return s[s.GetKey(i)]
-}
-
-func (s Services) GetKey(i int) string {
-	keys := make([]string, 0)
-	for k := range s {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		if i == 0 {
-			return k
-		}
-		i--
-	}
-	return ""
-}
-
 func (s Services) String(i int) string {
-	item := s.Get(i)
-	searchables := []string{item.Title, item.Group, item.Location, item.Cluster}
-	searchables = append(searchables, item.Tags...)
-	return strings.Join(searchables, "§§§")
+	item := s[i]
+	searchable := []string{item.Title, item.Group, item.Location, item.Cluster}
+	searchable = append(searchable, item.Tags...)
+	return strings.Join(searchable, "§§§")
 }
 
 func (s Services) Len() int {
@@ -62,15 +42,10 @@ func (s Services) Len() int {
 }
 
 func FuzzySearch(query string, list Services) Services {
-	// Perform fuzzy matching
 	matches := fuzzy.FindFromNoSort(query, list)
-
-	// Extract the matched strings
 	results := make(Services, len(matches))
-	for _, match := range matches {
-		key := list.GetKey(match.Index)
-		results[key] = list[key]
+	for i, match := range matches {
+		results[i] = list[match.Index]
 	}
-
 	return results
 }

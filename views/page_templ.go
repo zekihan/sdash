@@ -107,7 +107,7 @@ func CardGrid(config *config.DashboardConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, service := range config.GetServices() {
+		for _, service := range config.ServicesList {
 			templ_7745c5c3_Err = card(service.Key, service.Icon, service.Title, service.URL).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

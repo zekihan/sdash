@@ -19,7 +19,8 @@ var (
 )
 
 type DashboardConfig struct {
-	Services map[string]DashboardService `yaml:"services"`
+	Services     map[string]DashboardService `yaml:"services"`
+	ServicesList []DashboardService          `yaml:"-"`
 }
 
 func (c DashboardConfig) GetServices() []DashboardService {
@@ -79,6 +80,7 @@ func GetDashboardConfigFromFile() (*DashboardConfig, error) {
 		log.Errorf("Failed to parse config file: %v", err)
 		return config, err
 	}
+	config.ServicesList = config.GetServices()
 	return config, nil
 }
 
