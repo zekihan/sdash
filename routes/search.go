@@ -19,7 +19,9 @@ func GetSearch(w http.ResponseWriter, r *http.Request) {
 	if query != "" {
 		result = FuzzySearch(query, result)
 	}
-	err := views.CardGrid(&config.DashboardConfig{ServicesList: result}).Render(r.Context(), w)
+	filteredDashboard := &config.DashboardConfig{ServicesList: result}
+	filteredDashboard.GroupList = filteredDashboard.GetGroupsFromList()
+	err := views.CardLists(filteredDashboard).Render(r.Context(), w)
 	if err != nil {
 		log.Error("Error rendering dashboard: ", err)
 		w.WriteHeader(http.StatusInternalServerError)

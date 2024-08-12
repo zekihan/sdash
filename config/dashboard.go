@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"slices"
 	"sort"
 	"sync"
 )
@@ -21,6 +22,7 @@ var (
 type DashboardConfig struct {
 	Services     map[string]DashboardService `yaml:"services"`
 	ServicesList []DashboardService          `yaml:"-"`
+	GroupList    []string                    `yaml:"-"`
 }
 
 func (c DashboardConfig) GetServices() []DashboardService {
@@ -36,6 +38,36 @@ func (c DashboardConfig) GetServices() []DashboardService {
 		services = append(services, service)
 	}
 	return services
+}
+
+func (c DashboardConfig) GetGroupsFromList() []string {
+	groups := make([]string, 0)
+	for _, service := range c.ServicesList {
+		if service.Group == "" {
+			continue
+		}
+		if slices.Contains(groups, service.Group) {
+			continue
+		}
+		groups = append(groups, service.Group)
+	}
+	sort.Strings(groups)
+	return groups
+}
+
+func (c DashboardConfig) GetGroupsMap() []string {
+	groups := make([]string, 0)
+	for _, service := range c.Services {
+		if service.Group == "" {
+			continue
+		}
+		if slices.Contains(groups, service.Group) {
+			continue
+		}
+		groups = append(groups, service.Group)
+	}
+	sort.Strings(groups)
+	return groups
 }
 
 type DashboardService struct {
@@ -80,7 +112,18 @@ func GetDashboardConfigFromFile() (*DashboardConfig, error) {
 		log.Errorf("Failed to parse config file: %v", err)
 		return config, err
 	}
+	for k, v := range config.Services {
+		v.Key = k
+		config.Services[k] = v
+		if v.Tags == nil {
+			v.Tags = make([]string, 0)
+		}
+		if v.Group == "" {
+			v.Group = "Others"
+		}
+	}
 	config.ServicesList = config.GetServices()
+	config.GroupList = config.GetGroupsMap()
 	return config, nil
 }
 

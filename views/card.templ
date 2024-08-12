@@ -1,25 +1,31 @@
 package views
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/zekihan/sdash/config"
+)
 
 script cardOnClick(a string) {
 	window.open(a, '_blank')
 }
 
-templ card(key string, icon string, text string, link string) {
+templ card(service config.DashboardService) {
 	<div
-		id={ fmt.Sprintf("card-%s", key) }
+		id={ fmt.Sprintf("card-%s", service.Key) }
 		class="p-4 w-full max-w-sm"
 	>
 		<div
-			class="flex w-full h-40 rounded-lg h-full dark:bg-gray-800 bg-teal-400 p-8 flex-col cursor-pointer transform transition-transform duration-300 hover:scale-105 hover:shadow-lg"
-			onclick={ cardOnClick(link) }
+			class="relative flex w-full h-40 rounded-lg h-full dark:bg-gray-800 bg-teal-400 p-8 flex-col cursor-pointer transform transition-transform duration-300 hover:scale-105 hover:shadow-lg"
+			onclick={ cardOnClick(service.URL) }
 		>
 			<div class="flex items-center justify-center">
-				@image(icon, text)
+				@image(service.Icon, service.Title)
 			</div>
 			<div class="mt-4">
-				<p class="text-white text-lg title-font font-medium text-center">{ text }</p>
+				<p class="text-white text-lg title-font font-medium text-center">{ service.Title }</p>
+			</div>
+			<div class="absolute bottom-0 left-0 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-tr-lg">
+				{ service.Cluster }
 			</div>
 		</div>
 	</div>

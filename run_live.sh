@@ -3,8 +3,9 @@
 templ generate -path ./views --watch &
 
 tailwindcss --config ./build/tailwind/tailwind.config.js \
-	-i ./build/tailwind/input.css \
-	-o assets/css/tailwind.css --watch &
+	--input ./build/tailwind/input.css \
+	--output assets/css/tailwind.css \
+	--poll &
 
 ${GO_EXECUTABLE} run github.com/air-verse/air@latest \
 	--build.cmd "make build" --build.bin "${TMP_DIR}/bin/${BINARY_NAME}" --build.delay "100" \
