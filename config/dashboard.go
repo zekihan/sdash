@@ -25,7 +25,7 @@ type DashboardConfig struct {
 	GroupList    []string                    `yaml:"-"`
 }
 
-func (c DashboardConfig) GetServices() []DashboardService {
+func (c DashboardConfig) getServices() []DashboardService {
 	keys := make([]string, 0)
 	for k := range c.Services {
 		keys = append(keys, k)
@@ -55,7 +55,7 @@ func (c DashboardConfig) GetGroupsFromList() []string {
 	return groups
 }
 
-func (c DashboardConfig) GetGroupsMap() []string {
+func (c DashboardConfig) getGroupsMap() []string {
 	groups := make([]string, 0)
 	for _, service := range c.Services {
 		if service.Group == "" {
@@ -82,19 +82,19 @@ type DashboardService struct {
 }
 
 func GetDashboardConfig() *DashboardConfig {
-	if GetCurrentDashboard() == nil {
+	if getCurrentDashboard() == nil {
 		reloadDashboard()
 	}
-	return GetCurrentDashboard()
+	return getCurrentDashboard()
 }
 
-func GetCurrentDashboard() *DashboardConfig {
+func getCurrentDashboard() *DashboardConfig {
 	dashboardMutex.RLock()
 	defer dashboardMutex.RUnlock()
 	return dashboardConfig
 }
 
-func GetDashboardConfigFromFile() (*DashboardConfig, error) {
+func getDashboardConfigFromFile() (*DashboardConfig, error) {
 	config := &DashboardConfig{}
 	file, err := os.Open(getDashboardConfigFilePath())
 	if err != nil {
@@ -122,8 +122,8 @@ func GetDashboardConfigFromFile() (*DashboardConfig, error) {
 			v.Group = "Others"
 		}
 	}
-	config.ServicesList = config.GetServices()
-	config.GroupList = config.GetGroupsMap()
+	config.ServicesList = config.getServices()
+	config.GroupList = config.getGroupsMap()
 	return config, nil
 }
 
@@ -134,7 +134,7 @@ func WatchConfigFile() {
 		log.Fatalf("Failed to create watcher: %v", err)
 	}
 	defer watcher.Close()
-	err = watcher.Add(configPath)
+	err = watcher.AddWith(configPath)
 	if err != nil {
 		log.Fatalf("Failed to watch config file: %v", err)
 	}
@@ -154,7 +154,7 @@ func WatchConfigFile() {
 func reloadDashboard() {
 	dashboardMutex.Lock()
 	defer dashboardMutex.Unlock()
-	dashboardConfigFromFile, err := GetDashboardConfigFromFile()
+	dashboardConfigFromFile, err := getDashboardConfigFromFile()
 	if err == nil {
 		dashboardConfig = dashboardConfigFromFile
 		return
