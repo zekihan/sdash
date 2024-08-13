@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"time"
 )
 
 const defaultConfigFile = "config.yaml"
@@ -16,9 +17,9 @@ const defaultConfigFile = "config.yaml"
 var config *Config
 
 type Config struct {
-	WebConfig                            WebConfig `yaml:"web" env:", prefix=SDS__WEB_"`
-	LogConfig                            LogConfig `yaml:"log" env:", prefix=SDS__LOG_"`
-	ShouldContinueOnDashboardReloadError bool      `yaml:"continue_on_dashboard_error" env:"SDS__CONTINUE_ON_DASHBOARD_ERROR"`
+	WebConfig WebConfig `yaml:"web" env:", prefix=SDS__WEB_"`
+	LogConfig LogConfig `yaml:"log" env:", prefix=SDS__LOG_"`
+	Dashboard Dashboard `yaml:"dashboard" env:", prefix=SDS__DASHBOARD_"`
 }
 
 type WebConfig struct {
@@ -30,6 +31,18 @@ type LogConfig struct {
 	Level         logrus.Level `yaml:"-"`
 	LevelStr      string       `yaml:"level" env:"LEVEL"`
 	AddMethodName bool         `yaml:"add_method_name" env:"ADD_METHOD_NAME"`
+}
+
+type Dashboard struct {
+	Reload Reload `yaml:"reload" env:"reload" env:", prefix=RELOAD_"`
+}
+
+type Reload struct {
+	Enabled         bool          `yaml:"enabled" env:"ENABLED"`
+	ContinueOnError bool          `yaml:"continue_on_error" env:"CONTINUE_ON_ERROR"`
+	PollInterval    time.Duration `yaml:"poll_interval" env:"POLL_INTERVAL"`
+	UseModTime      bool          `yaml:"use_mod_time" env:"USE_MOD_TIME"`
+	UseFsNotify     bool          `yaml:"use_fs_notify" env:"USE_FS_NOTIFY"`
 }
 
 func GetConfig() *Config {
@@ -95,6 +108,15 @@ func GetDefaultConfig() *Config {
 		LogConfig: LogConfig{
 			Level:         logrus.WarnLevel,
 			AddMethodName: false,
+		},
+		Dashboard: Dashboard{
+			Reload: Reload{
+				Enabled:         false,
+				ContinueOnError: false,
+				PollInterval:    5 * time.Second,
+				UseModTime:      true,
+				UseFsNotify:     false,
+			},
 		},
 	}
 }

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"github.com/fsnotify/fsnotify"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
@@ -10,6 +11,7 @@ import (
 	"slices"
 	"sort"
 	"sync"
+	"time"
 )
 
 const dashboardConfigFile = "dashboard.yaml"
@@ -23,6 +25,7 @@ type DashboardConfig struct {
 	Services     map[string]DashboardService `yaml:"services"`
 	ServicesList []DashboardService          `yaml:"-"`
 	GroupList    []string                    `yaml:"-"`
+	lastModTime  time.Time                   `yaml:"-"`
 }
 
 func (c DashboardConfig) getServices() []DashboardService {
@@ -96,7 +99,17 @@ func getCurrentDashboard() *DashboardConfig {
 
 func getDashboardConfigFromFile() (*DashboardConfig, error) {
 	config := &DashboardConfig{}
-	file, err := os.Open(getDashboardConfigFilePath())
+	configPath := getDashboardConfigFilePath()
+	fileInfo, err := os.Stat(configPath)
+	if err != nil {
+		return config, err
+	}
+	if fileInfo.IsDir() {
+		return config, errors.New("config file is a directory")
+	}
+	currMod := fileInfo.ModTime()
+	config.lastModTime = currMod
+	file, err := os.Open(configPath)
 	if err != nil {
 		log.Errorf("Failed to open config file: %v", err)
 		return config, err
@@ -128,6 +141,46 @@ func getDashboardConfigFromFile() (*DashboardConfig, error) {
 }
 
 func WatchConfigFile() {
+	if GetConfig().Dashboard.Reload.Enabled {
+		if GetConfig().Dashboard.Reload.UseFsNotify {
+			WatchConfigFileViaFsNotify()
+		} else {
+			WatchConfigFileViaModTime()
+		}
+	}
+}
+
+func WatchConfigFileViaModTime() {
+	for {
+		time.Sleep(GetConfig().Dashboard.Reload.PollInterval)
+		configPath := getDashboardConfigFilePath()
+		var lastMod time.Time
+		cd := getCurrentDashboard()
+		if cd == nil {
+			lastMod = time.Now()
+		} else {
+			lastMod = cd.lastModTime
+		}
+		fileInfo, err := os.Stat(configPath)
+		if err != nil {
+			return
+		}
+		if fileInfo.IsDir() {
+			return
+		}
+		currMod := fileInfo.ModTime()
+		if currMod.IsZero() {
+			return
+		}
+		if lastMod.Unix() < currMod.Unix() {
+			log.Printf("Config file changed: %s", configPath)
+			reloadDashboard()
+			lastMod = currMod
+		}
+	}
+}
+
+func WatchConfigFileViaFsNotify() {
 	configPath := getDashboardConfigFilePath()
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -139,8 +192,10 @@ func WatchConfigFile() {
 		log.Fatalf("Failed to watch config file: %v", err)
 	}
 	for {
+		log.Debugf("Watching config file: %s", configPath)
 		select {
 		case event := <-watcher.Events:
+			log.Debugf("Config file changed. Event: %v", event)
 			if event.Has(fsnotify.Write) {
 				log.Printf("Config file changed: %s", event.Name)
 				reloadDashboard()
@@ -159,7 +214,7 @@ func reloadDashboard() {
 		dashboardConfig = dashboardConfigFromFile
 		return
 	}
-	if !GetConfig().ShouldContinueOnDashboardReloadError {
+	if !GetConfig().Dashboard.Reload.ContinueOnError {
 		panic(err)
 	}
 }

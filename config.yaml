@@ -3,4 +3,10 @@ web:
     port: 33000
 log:
     level: debug
-continue_on_dashboard_error: true
+dashboard:
+    reload:
+        enabled: true
+        poll_interval: 30s
+        use_mod_time: true
+        use_fs_notify: false
+        continue_on_error: false

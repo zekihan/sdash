@@ -11,7 +11,13 @@ import (
 	"os"
 )
 
-func main() {
+var stdChain middleware.Chain
+
+func init() {
+	// init config
+	config.GetConfig()
+
+	// init logger
 	log.SetFormatter(&log.TextFormatter{
 		FullTimestamp: true,
 	})
@@ -19,11 +25,17 @@ func main() {
 	log.SetLevel(config.GetConfig().LogConfig.Level)
 	log.SetReportCaller(config.GetConfig().LogConfig.AddMethodName)
 
+	// init dashboard config
+	config.GetDashboardConfig()
+
+	// init middleware
+	stdChain = middleware.New(middleware.Loging)
+}
+
+func main() {
 	log.Infof("Starting SDash %s in %s", utils.GetVersion(), utils.GetEnvironment())
 
 	go config.WatchConfigFile()
-
-	stdChain := middleware.New(middleware.Loging)
 
 	http.Handle("/api/ping", stdChain.ThenFunc(routes.GetPing))
 	http.Handle("/api/health", stdChain.ThenFunc(routes.GetHealth))
