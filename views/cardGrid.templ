@@ -1,0 +1,35 @@
+package views
+
+import (
+	"fmt"
+	"github.com/zekihan/sdash/config"
+)
+
+templ CardLists(config *config.DashboardConfig) {
+	<div
+		id="card-lists"
+		class="container mx-auto"
+	>
+		<div class="space-y-10">
+			for _, group := range config.GroupList {
+				<div>
+					<h1 class="text-white text-lg title-font font-medium text-center">{ group }</h1>
+					@cardGrid(config, group)
+				</div>
+			}
+		</div>
+	</div>
+}
+
+templ cardGrid(config *config.DashboardConfig, group string) {
+	<div
+		id={ fmt.Sprintf("card-grid-%s", group) }
+		class="flex flex-wrap justify-center mt-10"
+	>
+		for _, service := range config.ServicesList {
+			if service.Group == group {
+				@card(service)
+			}
+		}
+	</div>
+}

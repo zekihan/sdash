@@ -9,7 +9,7 @@ import (
 
 func GetDashboard(w http.ResponseWriter, r *http.Request) {
 	dashboard := config.GetDashboardConfig()
-	err := views.Page(dashboard).Render(r.Context(), w)
+	err := views.Root(dashboard).Render(r.Context(), w)
 	if err != nil {
 		log.Error("Error rendering dashboard: ", err)
 		w.WriteHeader(http.StatusInternalServerError)

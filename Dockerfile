@@ -38,7 +38,7 @@ RUN go mod download
 
 COPY . .
 
-RUN ./build.sh
+RUN ./scripts/build.sh
 
 FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/

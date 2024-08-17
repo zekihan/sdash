@@ -1,0 +1,18 @@
+package views
+
+import "github.com/zekihan/sdash/config"
+
+templ Root(config *config.DashboardConfig) {
+	<!DOCTYPE html>
+	<html lang="en" class="dark">
+		@header()
+		<body>
+			<main>
+				<div class="w-screen h-screen overflow-auto bg-white dark:bg-black p-4 md:p-6 2xl:p-10">
+					@search()
+					@CardLists(config)
+				</div>
+			</main>
+		</body>
+	</html>
+}
