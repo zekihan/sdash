@@ -68,7 +68,7 @@ func FuzzySearch(query string, list Services) Services {
 	}
 	results := make([]config.DashboardService, len(resultsMap))
 	i := 0
-	for key, _ := range resultsMap {
+	for key := range resultsMap {
 		results[i] = list[key]
 		i++
 	}

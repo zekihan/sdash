@@ -21,7 +21,7 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := getHttpClient()
+	client := getHTTPClient()
 	response, err := client.Get(url)
 	if err != nil {
 		log.Error("Error fetching icon: ", err)
@@ -53,7 +53,7 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func getHttpClient() *http.Client {
+func getHTTPClient() *http.Client {
 	return &http.Client{
 		Timeout: 5 * time.Second,
 		Transport: &http.Transport{

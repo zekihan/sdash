@@ -34,7 +34,7 @@ type LogConfig struct {
 }
 
 type Dashboard struct {
-	Reload Reload `yaml:"reload" env:"reload" env:", prefix=RELOAD_"`
+	Reload Reload `yaml:"reload" env:", prefix=RELOAD_"`
 }
 
 type Reload struct {

@@ -185,7 +185,6 @@ func WatchConfigFileViaModTime() {
 		if lastMod.Unix() < currMod.Unix() {
 			log.Printf("Config file changed: %s", configPath)
 			reloadDashboard()
-			lastMod = currMod
 		}
 	}
 }
