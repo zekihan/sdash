@@ -75,7 +75,7 @@ func card(service config.DashboardService) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = image(service.Icon, service.Title).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = image(service.GetIconURL(), service.Title).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

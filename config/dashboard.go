@@ -2,10 +2,12 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"github.com/fsnotify/fsnotify"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"slices"
@@ -74,14 +76,22 @@ func (c DashboardConfig) getGroupsMap() []string {
 }
 
 type DashboardService struct {
-	Key      string   `yaml:"-"`
-	Title    string   `yaml:"title"`
-	Group    string   `yaml:"group"`
-	Location string   `yaml:"location"`
-	Cluster  string   `yaml:"cluster"`
-	URL      string   `yaml:"url"`
-	Icon     string   `yaml:"icon"`
-	Tags     []string `yaml:"tags"`
+	Key       string   `yaml:"-"`
+	Title     string   `yaml:"title"`
+	Group     string   `yaml:"group"`
+	Location  string   `yaml:"location"`
+	Cluster   string   `yaml:"cluster"`
+	URL       string   `yaml:"url"`
+	Icon      string   `yaml:"icon"`
+	ProxyIcon bool     `yaml:"proxy_icon"`
+	Tags      []string `yaml:"tags"`
+}
+
+func (s *DashboardService) GetIconURL() string {
+	if !s.ProxyIcon {
+		return s.Icon
+	}
+	return fmt.Sprintf("/icon?url=%s", url.QueryEscape(s.Icon))
 }
 
 func GetDashboardConfig() *DashboardConfig {

@@ -5,6 +5,7 @@ go 1.23.0
 require (
 	github.com/a-h/templ v0.2.747
 	github.com/fsnotify/fsnotify v1.7.0
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/sahilm/fuzzy v0.1.1
 	github.com/sethvargo/go-envconfig v1.1.0
 	github.com/sirupsen/logrus v1.9.3

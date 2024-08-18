@@ -5,6 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/routes"
+	"github.com/zekihan/sdash/routes/icon"
 	"github.com/zekihan/sdash/routes/middleware"
 	"github.com/zekihan/sdash/utils"
 	"net/http"
@@ -28,6 +29,8 @@ func init() {
 	// init dashboard config
 	config.GetDashboardConfig()
 
+	icon.InitIconCache()
+
 	// init middleware
 	stdChain = middleware.New(middleware.Loging)
 }
@@ -44,6 +47,7 @@ func main() {
 	fsServer := http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets")))
 	http.Handle("/assets/", stdChain.ThenFunc(fsServer.ServeHTTP))
 
+	http.Handle("/icon", stdChain.ThenFunc(icon.Proxy))
 	http.Handle("/", stdChain.ThenFunc(routes.GetDashboard))
 
 	port := config.GetConfig().WebConfig.Port

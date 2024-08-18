@@ -19,7 +19,7 @@ templ card(service config.DashboardService) {
 			onclick={ cardOnClick(service.URL) }
 		>
 			<div class="flex items-center justify-center">
-				@image(service.Icon, service.Title)
+				@image(service.GetIconURL(), service.Title)
 			</div>
 			<div class="mt-4">
 				<p class="text-white text-lg title-font font-medium text-center">{ service.Title }</p>
