@@ -3,7 +3,7 @@ module github.com/zekihan/sdash
 go 1.23.0
 
 require (
-	github.com/a-h/templ v0.2.747
+	github.com/a-h/templ v0.2.771
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/sahilm/fuzzy v0.1.1
@@ -14,5 +14,5 @@ require (
 
 require (
 	github.com/kylelemons/godebug v1.1.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/sys v0.23.0 // indirect
 )
