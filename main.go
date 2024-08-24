@@ -50,6 +50,7 @@ func main() {
 
 	http.Handle("/icon", stdChain.ThenFunc(icon.Proxy))
 	http.Handle("/", stdChain.ThenFunc(routes.GetDashboard))
+	http.Handle("/group/{group}", stdChain.ThenFunc(routes.GetGroup))
 
 	port := config.GetConfig().WebConfig.Port
 	host := config.GetConfig().WebConfig.Host

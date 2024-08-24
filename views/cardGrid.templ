@@ -5,6 +5,16 @@ import (
 	"github.com/zekihan/sdash/config/dashboard"
 )
 
+script groupOnClick(a string) {
+  url = "/group/" + a
+  window.location.href = url
+}
+
+script groupOnAuxClick(a string) {
+  url = "/group/" + a
+  window.open(url, '_blank')
+}
+
 templ CardLists(config *dashboard.Config) {
 	<div
 		id="card-lists"
@@ -14,7 +24,13 @@ templ CardLists(config *dashboard.Config) {
 			for _, group := range config.GroupList {
 				if group.HasAny {
 					<div>
-						<h1 class="text-white text-lg title-font font-medium text-center">{ group.Title }</h1>
+						<h1
+							class="text-white text-lg title-font font-medium text-center cursor-pointer"
+							onclick={ groupOnClick(group.Key) }
+							onauxclick={ groupOnAuxClick(group.Key) }
+						>
+							{ group.Title }
+						</h1>
 						@cardGrid(config, group)
 					</div>
 				}
