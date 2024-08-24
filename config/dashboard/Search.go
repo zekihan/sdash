@@ -16,7 +16,8 @@ type SearchFromConfig struct {
 }
 
 type SearchConfig struct {
-	From *SearchFromConfig `yaml:"from"`
+	From      *SearchFromConfig `yaml:"from"`
+	Separator string            `yaml:"separator"`
 }
 
 func (c *Config) postProcessSearchConfig() {

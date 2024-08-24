@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-const separator = "§§§"
-
 func FuzzySearch(query string, list dashboard.ServicesList) dashboard.ServicesList {
 	resultsMap := make(map[int]bool)
 	searchable := getSearchable(list)
@@ -36,6 +34,7 @@ func getSearchable(list dashboard.ServicesList) [][]string {
 		searchable[i] = make([]string, len(list))
 	}
 
+	separator := separator()
 	for i, service := range list {
 		for j, field := range config.SearchConfig.From.Group {
 			group := config.Groups[service.Group]
@@ -67,4 +66,16 @@ func getSearchable(list dashboard.ServicesList) [][]string {
 		}
 	}
 	return searchable
+}
+
+func separator() string {
+	const defaultSeparator = "§§§"
+	separator := dashboard.GetConfig().SearchConfig.Separator
+	if separator == "" {
+		return defaultSeparator
+	}
+	if len(separator) < 3 {
+		return defaultSeparator
+	}
+	return separator
 }
