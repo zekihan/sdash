@@ -30,6 +30,7 @@ type Config struct {
 	Groups           map[string]*Group   `yaml:"groups"`
 	GroupList        GroupList           `yaml:"-"`
 	OrderGroupsVia   Ordering            `yaml:"order_groups_via"`
+	SearchConfig     *SearchConfig       `yaml:"search"`
 	lastModTime      time.Time           `yaml:"-"`
 }
 
@@ -81,6 +82,7 @@ func getConfigFromFile() (*Config, error) {
 func (c *Config) postProcessConfig() {
 	c.postProcessGroups()
 	c.postProcessServices()
+	c.postProcessSearchConfig()
 }
 
 func WatchConfigFile() {
