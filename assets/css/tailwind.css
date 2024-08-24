@@ -705,6 +705,10 @@ video {
   border-radius: 0.5rem;
 }
 
+.rounded-bl-lg {
+  border-bottom-left-radius: 0.5rem;
+}
+
 .rounded-tr-lg {
   border-top-right-radius: 0.5rem;
 }
