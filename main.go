@@ -4,6 +4,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/zekihan/sdash/config"
+	"github.com/zekihan/sdash/config/dashboard"
 	"github.com/zekihan/sdash/routes"
 	"github.com/zekihan/sdash/routes/icon"
 	"github.com/zekihan/sdash/routes/middleware"
@@ -27,7 +28,7 @@ func init() {
 	log.SetReportCaller(config.GetConfig().LogConfig.AddMethodName)
 
 	// init dashboard config
-	config.GetDashboardConfig()
+	dashboard.GetConfig()
 
 	icon.InitIconCache()
 
@@ -38,7 +39,7 @@ func init() {
 func main() {
 	log.Infof("Starting SDash %s in %s", utils.GetVersion(), utils.GetEnvironment())
 
-	go config.WatchConfigFile()
+	go dashboard.WatchConfigFile()
 
 	http.Handle("/api/ping", stdChain.ThenFunc(routes.GetPing))
 	http.Handle("/api/health", stdChain.ThenFunc(routes.GetHealth))

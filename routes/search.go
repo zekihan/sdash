@@ -3,24 +3,33 @@ package routes
 import (
 	"github.com/sahilm/fuzzy"
 	log "github.com/sirupsen/logrus"
-	"github.com/zekihan/sdash/config"
+	"github.com/zekihan/sdash/config/dashboard"
 	"github.com/zekihan/sdash/views"
 	"net/http"
+	"slices"
 	"strings"
 )
 
-type Services []config.DashboardService
-
 func GetSearch(w http.ResponseWriter, r *http.Request) {
-	dashboard := config.GetDashboardConfig()
-	result := dashboard.ServicesList
+	config := dashboard.GetConfig()
+	result := config.ServicesList
+	groups := config.GroupList
 
 	query := r.URL.Query().Get("search")
 	if query != "" {
 		result = FuzzySearch(query, result)
+		result.Sort(config.OrderServicesVia)
+		groups = make(dashboard.GroupList, 0)
+		for _, service := range result {
+			if !slices.ContainsFunc(groups, func(group *dashboard.Group) bool {
+				return group.Key == service.Group
+			}) {
+				groups = append(groups, config.Groups[service.Group])
+			}
+		}
+		groups.Sort(config.OrderGroupsVia)
 	}
-	filteredDashboard := &config.DashboardConfig{ServicesList: result}
-	filteredDashboard.GroupList = filteredDashboard.GetGroupsFromList()
+	filteredDashboard := &dashboard.Config{ServicesList: result, GroupList: groups}
 	err := views.CardLists(filteredDashboard).Render(r.Context(), w)
 	if err != nil {
 		log.Error("Error rendering dashboard: ", err)
@@ -32,7 +41,7 @@ func GetSearch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func FuzzySearch(query string, list Services) Services {
+func FuzzySearch(query string, list dashboard.ServicesList) dashboard.ServicesList {
 	resultsMap := make(map[int]bool)
 	titles := make([]string, len(list))
 	groups := make([]string, len(list))
@@ -66,7 +75,7 @@ func FuzzySearch(query string, list Services) Services {
 	for _, match := range tagsMatches {
 		resultsMap[match.Index] = true
 	}
-	results := make([]config.DashboardService, len(resultsMap))
+	results := make([]*dashboard.Service, len(resultsMap))
 	i := 0
 	for key := range resultsMap {
 		results[i] = list[key]

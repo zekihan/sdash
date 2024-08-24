@@ -2,14 +2,14 @@ package views
 
 import (
 	"fmt"
-	"github.com/zekihan/sdash/config"
+	"github.com/zekihan/sdash/config/dashboard"
 )
 
 script cardOnClick(a string) {
 	window.open(a, '_blank')
 }
 
-templ card(service config.DashboardService) {
+templ card(service *dashboard.Service) {
 	<div
 		id={ fmt.Sprintf("card-%s", service.Key) }
 		class="p-4 w-full max-w-sm"

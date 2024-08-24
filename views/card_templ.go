@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	"github.com/zekihan/sdash/config"
+	"github.com/zekihan/sdash/config/dashboard"
 )
 
 func cardOnClick(a string) templ.ComponentScript {
@@ -23,7 +23,7 @@ func cardOnClick(a string) templ.ComponentScript {
 	}
 }
 
-func card(service config.DashboardService) templ.Component {
+func card(service *dashboard.Service) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)

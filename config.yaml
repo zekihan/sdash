@@ -7,6 +7,6 @@ dashboard:
     reload:
         enabled: true
         poll_interval: 30s
-        use_mod_time: true
-        use_fs_notify: false
+        use_mod_time: false
+        use_fs_notify: true
         continue_on_error: false
