@@ -26,10 +26,10 @@ templ card(service *dashboard.Service) {
 				<p class="text-white text-lg title-font font-medium text-center">{ service.Title }</p>
 			</div>
 			if service.Cluster != "" {
-        <div class="absolute bottom-0 left-0 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-tr-lg rounded-bl-lg">
-          { service.Cluster }
-        </div>
-      }
+				<div class="absolute bottom-0 left-0 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-tr-lg rounded-bl-lg">
+					{ service.Cluster }
+				</div>
+			}
 		</div>
 	</div>
 }

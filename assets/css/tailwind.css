@@ -862,6 +862,11 @@ video {
   .md\:p-6 {
     padding: 1.5rem;
   }
+
+  .md\:px-6 {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
 }
 
 @media (min-width: 1536px) {
@@ -871,6 +876,11 @@ video {
 
   .\32xl\:p-8 {
     padding: 2rem;
+  }
+
+  .\32xl\:px-8 {
+    padding-left: 2rem;
+    padding-right: 2rem;
   }
 }
 
