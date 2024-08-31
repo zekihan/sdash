@@ -9,6 +9,20 @@ import (
 )
 
 func InitLogger(cfg *config.Config) {
+	log.SetLevel(cfg.LogConfig.Level)
+	log.SetFormatter(&log.TextFormatter{
+		ForceColors:     true,
+		FullTimestamp:   true,
+		TimestampFormat: time.RFC822,
+	})
+	log.SetReportCaller(config.GetConfig().LogConfig.AddMethodName)
+	log.SetOutput(os.Stdout)
+	if cfg.LogConfig.Path != "" {
+		AddFileHook(cfg)
+	}
+}
+
+func AddFileHook(cfg *config.Config) {
 	rotateFileHook, err := rotatefilehook.NewRotateFileHook(rotatefilehook.RotateFileConfig{
 		Filename:   cfg.LogConfig.Path,
 		MaxSize:    50, // megabytes
@@ -19,18 +33,8 @@ func InitLogger(cfg *config.Config) {
 			TimestampFormat: time.RFC822,
 		},
 	})
-
 	if err != nil {
 		log.Fatalf("Failed to initialize file rotate hook: %v", err)
 	}
-
-	log.SetLevel(cfg.LogConfig.Level)
-	log.SetFormatter(&log.TextFormatter{
-		ForceColors:     true,
-		FullTimestamp:   true,
-		TimestampFormat: time.RFC822,
-	})
-	log.SetReportCaller(config.GetConfig().LogConfig.AddMethodName)
-	log.SetOutput(os.Stdout)
 	log.AddHook(rotateFileHook)
 }
