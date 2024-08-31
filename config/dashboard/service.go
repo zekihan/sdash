@@ -25,7 +25,7 @@ func (s *Service) GetIconURL() string {
 	if !s.ProxyIcon {
 		return s.Icon
 	}
-	return fmt.Sprintf("/icon?url=%s", url.QueryEscape(s.Icon))
+	return fmt.Sprintf("/api/proxy/icon?url=%s", url.QueryEscape(s.Icon))
 }
 
 func (c *Config) postProcessServices() {

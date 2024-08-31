@@ -1,7 +1,7 @@
 package icon
 
 import (
-	log "github.com/sirupsen/logrus"
+	"github.com/zekihan/sdash/routes"
 	"io"
 	"net/http"
 	"time"
@@ -13,36 +13,27 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 
 	if icon, ok := cache.get(url); ok {
 		w.Header().Set("Content-Type", icon.contentType)
-		_, err := w.Write(icon.data)
-		if err != nil {
-			log.Error("Error writing icon: ", err)
-			return
-		}
+		routes.Write(w, icon.data)
 		return
 	}
 
 	client := getHTTPClient()
 	response, err := client.Get(url)
-	if err != nil {
-		log.Error("Error fetching icon: ", err)
-		http.Error(w, "Proxy not implemented yet", http.StatusInternalServerError)
+	if routes.CheckError(w, err, http.StatusInternalServerError, "failed to fetch icon") {
 		return
 	}
 
 	defer response.Body.Close()
 	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		log.Error("Error reading icon: ", err)
-		http.Error(w, "Proxy not implemented yet", http.StatusInternalServerError)
+	if routes.CheckError(w, err, http.StatusInternalServerError, "failed to read icon") {
 		return
 	}
 
 	contentType := response.Header.Get("Content-Type")
 	w.Header().Set("Content-Type", contentType)
 
-	_, err = w.Write(body)
-	if err != nil {
-		log.Error("Error writing icon: ", err)
+	w.WriteHeader(response.StatusCode)
+	if routes.Write(w, body) {
 		return
 	}
 

@@ -1,13 +1,21 @@
 package middleware
 
 import (
+	"github.com/felixge/httpsnoop"
 	log "github.com/sirupsen/logrus"
+	"github.com/zekihan/sdash/utils"
 	"net/http"
+	"time"
 )
 
-func Loging(handler http.Handler) http.Handler {
+func Logging(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Info(r.Method, " ", r.URL.Path, " ", r.RemoteAddr)
-		handler.ServeHTTP(w, r)
+		ip, err := utils.GetIP(r)
+		if err != nil {
+			log.Error("Error getting IP: ", err)
+			ip = "unknown"
+		}
+		m := httpsnoop.CaptureMetrics(handler, w, r)
+		log.Infof("%s %s %d %s %s", r.Method, ip, m.Code, m.Duration.Round(time.Millisecond), r.URL.Path)
 	})
 }

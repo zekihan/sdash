@@ -15,23 +15,23 @@ import (
 
 func groupOnClick(a string) templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_groupOnClick_f49a`,
-		Function: `function __templ_groupOnClick_f49a(a){url = "/group/" + a
+		Name: `__templ_groupOnClick_4d4e`,
+		Function: `function __templ_groupOnClick_4d4e(a){url = "/dashboard/group/" + a
   window.location.href = url
 }`,
-		Call:       templ.SafeScript(`__templ_groupOnClick_f49a`, a),
-		CallInline: templ.SafeScriptInline(`__templ_groupOnClick_f49a`, a),
+		Call:       templ.SafeScript(`__templ_groupOnClick_4d4e`, a),
+		CallInline: templ.SafeScriptInline(`__templ_groupOnClick_4d4e`, a),
 	}
 }
 
 func groupOnAuxClick(a string) templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_groupOnAuxClick_7a89`,
-		Function: `function __templ_groupOnAuxClick_7a89(a){url = "/group/" + a
+		Name: `__templ_groupOnAuxClick_d5c1`,
+		Function: `function __templ_groupOnAuxClick_d5c1(a){url = "/dashboard/group/" + a
   window.open(url, '_blank')
 }`,
-		Call:       templ.SafeScript(`__templ_groupOnAuxClick_7a89`, a),
-		CallInline: templ.SafeScriptInline(`__templ_groupOnAuxClick_7a89`, a),
+		Call:       templ.SafeScript(`__templ_groupOnAuxClick_d5c1`, a),
+		CallInline: templ.SafeScriptInline(`__templ_groupOnAuxClick_d5c1`, a),
 	}
 }
 

@@ -4,6 +4,7 @@ go 1.23.0
 
 require (
 	github.com/a-h/templ v0.2.771
+	github.com/felixge/httpsnoop v1.0.4
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/sahilm/fuzzy v0.1.1
