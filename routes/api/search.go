@@ -1,8 +1,8 @@
-package routes
+package api
 
 import (
-	log "github.com/sirupsen/logrus"
 	"github.com/zekihan/sdash/config/dashboard"
+	"github.com/zekihan/sdash/routes"
 	"github.com/zekihan/sdash/search"
 	"github.com/zekihan/sdash/views"
 	"net/http"
@@ -30,12 +30,5 @@ func GetSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	filteredDashboard := &dashboard.Config{ServicesList: result, GroupList: groups}
 	err := views.CardLists(filteredDashboard).Render(r.Context(), w)
-	if err != nil {
-		log.Error("Error rendering dashboard: ", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err := w.Write([]byte("500 - Something bad happened!"))
-		if err != nil {
-			return
-		}
-	}
+	routes.CheckError(w, err, http.StatusInternalServerError, "failed to render card lists")
 }
