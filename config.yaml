@@ -3,6 +3,7 @@ web:
     port: 33000
 log:
     level: debug
+    path: tmp/logs
 dashboard:
     reload:
         enabled: true

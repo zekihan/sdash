@@ -30,6 +30,7 @@ type WebConfig struct {
 type LogConfig struct {
 	Level         logrus.Level `yaml:"-"`
 	LevelStr      string       `yaml:"level" env:"LEVEL"`
+	Path          string       `yaml:"path" env:"PATH"`
 	AddMethodName bool         `yaml:"add_method_name" env:"ADD_METHOD_NAME"`
 }
 
@@ -107,6 +108,7 @@ func GetDefaultConfig() *Config {
 		},
 		LogConfig: LogConfig{
 			Level:         logrus.WarnLevel,
+			Path:          "tmp/logs",
 			AddMethodName: false,
 		},
 		Dashboard: Dashboard{

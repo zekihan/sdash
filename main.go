@@ -12,22 +12,17 @@ import (
 	"github.com/zekihan/sdash/routes/viewRoutes"
 	"github.com/zekihan/sdash/utils"
 	"net/http"
-	"os"
 )
 
 var stdChain middleware.Chain
+var cfg *config.Config
 
 func init() {
 	// init config
-	config.GetConfig()
+	cfg = config.GetConfig()
 
 	// init logger
-	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp: true,
-	})
-	log.SetOutput(os.Stdout)
-	log.SetLevel(config.GetConfig().LogConfig.Level)
-	log.SetReportCaller(config.GetConfig().LogConfig.AddMethodName)
+	utils.InitLogger(cfg)
 
 	// init dashboard config
 	dashboard.GetConfig()
@@ -72,8 +67,8 @@ func main() {
 		http.Redirect(w, r, "/404", http.StatusMovedPermanently)
 	})
 
-	port := config.GetConfig().WebConfig.Port
-	host := config.GetConfig().WebConfig.Host
+	port := cfg.WebConfig.Port
+	host := cfg.WebConfig.Host
 	log.Infof("Starting server on %s:%d", host, port)
 	err := http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), stdChain.Then(http.DefaultServeMux))
 	if err != nil {
