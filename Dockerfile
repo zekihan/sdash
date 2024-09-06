@@ -25,7 +25,7 @@ COPY --chown=65532:65532 . /app
 WORKDIR /app
 RUN ["templ", "generate", "-path", "./views"]
 
-FROM docker.io/golang:1.23.0 AS builder
+FROM docker.io/golang:1.23.1 AS builder
 COPY --from=templ /app /app
 WORKDIR /app
 
