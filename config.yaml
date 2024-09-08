@@ -11,9 +11,9 @@ dashboard:
         use_mod_time: false
         use_fs_notify: true
         continue_on_error: true
-oidc:
-    authentik:
-        enabled: true
+#oidc:
+#    authentik:
+#        enabled: false
 #        default: false
 #        client_id: ""
 #        client_secret: ""
