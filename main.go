@@ -7,15 +7,18 @@ import (
 	"github.com/zekihan/sdash/config/dashboard"
 	"github.com/zekihan/sdash/routes/api"
 	"github.com/zekihan/sdash/routes/api/icon"
-	"github.com/zekihan/sdash/routes/errorRoutes"
+	"github.com/zekihan/sdash/routes/errorroutes"
 	"github.com/zekihan/sdash/routes/middleware"
-	"github.com/zekihan/sdash/routes/viewRoutes"
+	"github.com/zekihan/sdash/routes/viewroutes"
+	"github.com/zekihan/sdash/session"
+	"github.com/zekihan/sdash/session/auth"
 	"github.com/zekihan/sdash/utils"
 	"net/http"
 )
 
-var stdChain middleware.Chain
 var cfg *config.Config
+var stdChain middleware.Chain
+var authChain middleware.Chain
 
 func init() {
 	// init config
@@ -24,6 +27,12 @@ func init() {
 	// init logger
 	utils.InitLogger(cfg)
 
+	// init oidc
+	auth.Init(cfg)
+
+	// init session
+	session.Init(cfg)
+
 	// init dashboard config
 	dashboard.GetConfig()
 
@@ -31,6 +40,7 @@ func init() {
 
 	// init middleware
 	stdChain = middleware.New(middleware.RecoverHandler, middleware.Logging)
+	authChain = middleware.New(middleware.AuthHandler)
 }
 
 func main() {
@@ -41,35 +51,32 @@ func main() {
 	// API routes
 	http.HandleFunc("/api/ping", api.GetPing)
 	http.HandleFunc("/api/health", api.GetHealth)
-	http.HandleFunc("/api/search", api.GetSearch)
-	http.HandleFunc("/api/proxy/icon", icon.Proxy)
+	http.Handle("/api/search", authChain.ThenFunc(api.GetSearch))
+	http.Handle("/api/proxy/icon", authChain.ThenFunc(icon.Proxy))
+
+	// Auth routes
+	http.HandleFunc("/login", api.LoginDefault)
+	http.HandleFunc("/login/{oidc}", api.Login)
+	http.HandleFunc("/user/oauth2/{oidc}/callback", api.AuthCallback)
 
 	// Static files
 	fsServer := http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets")))
 	http.HandleFunc("/assets/", fsServer.ServeHTTP)
 
 	// Dashboard routes
-	http.HandleFunc("/dashboard", viewRoutes.GetDashboard)
-	http.HandleFunc("/dashboard/group/{group}", viewRoutes.GetGroup)
+	http.Handle("/dashboard", authChain.ThenFunc(viewroutes.GetDashboard))
+	http.Handle("/dashboard/group/{group}", authChain.ThenFunc(viewroutes.GetGroup))
 
 	// Error routes
-	http.HandleFunc("/404", errorRoutes.GetNotFound)
-	http.HandleFunc("/5xx", errorRoutes.Get5xx)
+	http.HandleFunc("/404", errorroutes.GetNotFound)
+	http.HandleFunc("/5xx", errorroutes.Get5xx)
 
-	// Redirect all other paths
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Redirect root path to dashboard
-		if r.URL.Path == "/" {
-			http.Redirect(w, r, "/dashboard", http.StatusMovedPermanently)
-			return
-		}
-		// Redirect all other paths to 404
-		http.Redirect(w, r, "/404", http.StatusMovedPermanently)
-	})
+	http.HandleFunc("/", viewroutes.Root)
 
 	port := cfg.WebConfig.Port
 	host := cfg.WebConfig.Host
 	log.Infof("Starting server on %s:%d", host, port)
+	log.Infof("Url: %s", cfg.WebConfig.BaseURL)
 	err := http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), stdChain.Then(http.DefaultServeMux))
 	if err != nil {
 		log.Fatal(err)

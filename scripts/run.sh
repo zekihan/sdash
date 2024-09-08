@@ -14,6 +14,16 @@ if [ -z "${BINARY_NAME}" ]; then
 	BINARY_NAME="sdash"
 fi
 
+secrets="$(./scripts/inject_secrets.sh)"
+retVal=$?
+if [ $retVal -ne 0 ]; then
+	echo "Failed to inject secrets"
+	exit 1
+fi
+set -a
+eval "${secrets}"
+set +a
+
 ./scripts/build_deps.sh
 
 ./scripts/build.sh

@@ -5,6 +5,6 @@ import (
 	"net/http"
 )
 
-func GetHealth(w http.ResponseWriter, r *http.Request) {
+func GetHealth(w http.ResponseWriter, _ *http.Request) {
 	routes.WriteString(w, "OK\n")
 }

@@ -6,6 +6,16 @@ DIR=$( cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P )
 
 cd "${DIR}/.."
 
+secrets="$(./scripts/inject_secrets.sh)"
+retVal=$?
+if [ $retVal -ne 0 ]; then
+	echo "Failed to inject secrets"
+	exit 1
+fi
+set -a
+eval "${secrets}"
+set +a
+
 templ generate -path ./views --watch &
 
 tailwindcss --config ./build/tailwind/tailwind.config.js \

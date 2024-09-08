@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var IpNotFound = errors.New("IP not found")
+var ErrIPNotFound = errors.New("IP not found")
 
 func GetIP(r *http.Request) (string, error) {
 	errs := make([]error, 0)
@@ -42,7 +42,7 @@ func getIPFromXForwardedFor(r *http.Request) (string, error) {
 		}
 	}
 
-	return "", IpNotFound
+	return "", ErrIPNotFound
 }
 
 func getIPFromXRealIP(r *http.Request) (string, error) {
@@ -53,7 +53,7 @@ func getIPFromXRealIP(r *http.Request) (string, error) {
 		return netIP.String(), nil
 	}
 
-	return "", IpNotFound
+	return "", ErrIPNotFound
 }
 
 func getIPFromRemoteAddr(r *http.Request) (string, error) {
@@ -71,5 +71,5 @@ func getIPFromRemoteAddr(r *http.Request) (string, error) {
 		return ip, nil
 	}
 
-	return "", IpNotFound
+	return "", ErrIPNotFound
 }

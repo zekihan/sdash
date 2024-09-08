@@ -1,4 +1,4 @@
-package viewRoutes
+package viewroutes
 
 import (
 	"github.com/zekihan/sdash/config/dashboard"

@@ -1,0 +1,73 @@
+package api
+
+import (
+	"github.com/zekihan/sdash/config"
+	"github.com/zekihan/sdash/routes"
+	"github.com/zekihan/sdash/session"
+	"github.com/zekihan/sdash/session/auth"
+	"net/http"
+	"strings"
+)
+
+func AuthCallback(w http.ResponseWriter, r *http.Request) {
+	oidcKey := r.PathValue("oidc")
+	if oidcKey == "" {
+		http.NotFound(w, r)
+		return
+	}
+	oidcSource, ok := auth.OidcSourceMap[oidcKey]
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	var state string
+	err := routes.GetCookie(r, "state", &state)
+	if err != nil {
+		http.Error(w, "state not found", http.StatusBadRequest)
+		return
+	}
+	if r.URL.Query().Get("state") != state {
+		http.Error(w, "state did not match", http.StatusBadRequest)
+		return
+	}
+
+	stateParsed := strings.SplitN(state, "$$$", 2)
+	if len(stateParsed) != 2 {
+		http.Error(w, "state is invalid", http.StatusBadRequest)
+		return
+	}
+
+	redirected := stateParsed[1]
+	if redirected == "" {
+		redirected = "/"
+	}
+
+	ctx := r.Context()
+	oauth2Token, err := oidcSource.Config.Exchange(ctx, r.URL.Query().Get("code"))
+	if routes.CheckError(w, err, http.StatusInternalServerError, "Failed to exchange token") {
+		return
+	}
+
+	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
+	if !ok {
+		http.Error(w, "no id_token field in oauth2 token", http.StatusBadRequest)
+		return
+	}
+	idToken, err := oidcSource.Verify(ctx, rawIDToken)
+	if routes.CheckError(w, err, http.StatusInternalServerError, "Failed to verify ID token") {
+		return
+	}
+
+	var profile map[string]interface{}
+	err = idToken.Claims(&profile)
+	if routes.CheckError(w, err, http.StatusInternalServerError, "Failed to get claims") {
+		return
+	}
+
+	sess := session.Store.NewSession()
+	sess.Authenticated = true
+	routes.SetCookie(w, r, config.GetConfig().WebConfig.AuthCookie, sess)
+
+	http.Redirect(w, r, redirected, http.StatusSeeOther)
+}
