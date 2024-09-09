@@ -2,11 +2,11 @@
 
 set -e
 
-DIR=$( cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P )
+DIR=$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)
 
 cd "${DIR}/.."
 
-TEMPL_VERSION="v0.2.771"
+TEMPL_VERSION="v0.2.778"
 TAILWINDCSS_VERSION="v3.4.10"
 
 arch=$(uname -m)
@@ -28,18 +28,38 @@ else
 	exit 1
 fi
 
-# Install templ if not already installed
-if ! command -v templ > /dev/null 2>&1
-then
-	echo "Installing templ with version ${TEMPL_VERSION}"
-	go install github.com/a-h/templ/cmd/templ@"${TEMPL_VERSION}"
-fi
+install_templ() {
+	# Install templ if not already installed
+	if [ "${FORCE}" -eq 1 ] || ! command -v templ >/dev/null 2>&1; then
+		echo "Installing templ with version ${TEMPL_VERSION}"
+		go install github.com/a-h/templ/cmd/templ@"${TEMPL_VERSION}"
+	fi
+}
 
-# Install tailwindcss if not already installed
-if ! command -v tailwindcss > /dev/null 2>&1
-then
-	echo "Installing tailwindcss with version ${TAILWINDCSS_VERSION}"
-	curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/"${TAILWINDCSS_VERSION}"/tailwindcss-"${tailwindcss_os}"-"${tailwindcss_arch}"
-	chmod +x tailwindcss-"${tailwindcss_os}"-"${tailwindcss_arch}"
-	sudo mv tailwindcss-"${tailwindcss_os}"-"${tailwindcss_arch}" /usr/local/bin/tailwindcss
-fi
+install_tailwindcss() {
+	# Install tailwindcss if not already installed
+	if [ "${FORCE}" -eq 1 ] || ! command -v tailwindcss >/dev/null 2>&1; then
+		echo "Installing tailwindcss with version ${TAILWINDCSS_VERSION}"
+		curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/"${TAILWINDCSS_VERSION}"/tailwindcss-"${tailwindcss_os}"-"${tailwindcss_arch}"
+		chmod +x tailwindcss-"${tailwindcss_os}"-"${tailwindcss_arch}"
+		sudo mv tailwindcss-"${tailwindcss_os}"-"${tailwindcss_arch}" /usr/local/bin/tailwindcss
+	fi
+}
+
+#flags
+FORCE=0
+
+while getopts "f" opt; do
+	case ${opt} in
+		f)
+			FORCE=1
+			;;
+		\?)
+			echo "Invalid option: $OPTARG" 1>&2
+			exit 1
+			;;
+	esac
+done
+
+install_templ
+install_tailwindcss

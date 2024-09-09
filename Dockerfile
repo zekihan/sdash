@@ -20,7 +20,7 @@ RUN npx postcss --config ./build/csspostprocess/postcss.config.js \
     --dir assets/css \
     --ext ".min.css"
 
-FROM ghcr.io/a-h/templ:v0.2.771 AS templ
+FROM ghcr.io/a-h/templ:v0.2.778 AS templ
 COPY --chown=65532:65532 . /app
 WORKDIR /app
 RUN ["templ", "generate", "-path", "./views"]
