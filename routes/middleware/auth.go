@@ -10,15 +10,11 @@ import (
 
 func AuthHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sess, ok := getSessionFromCookie(r)
 		if !auth.IsAuthEnabled() {
-			if !ok {
-				sess = session.Store.NewSession()
-				routes.SetCookie(w, r, config.GetConfig().WebConfig.AuthCookie, sess)
-			}
 			handler.ServeHTTP(w, r)
 			return
 		}
+		sess, ok := getSessionFromCookie(r)
 		if !ok || !sess.Authenticated || sess.IsExpired() {
 			redirect(w, r)
 			return
