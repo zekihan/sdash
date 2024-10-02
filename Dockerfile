@@ -1,5 +1,5 @@
 # First stage: Tailwind CSS build
-FROM docker.io/node:22-alpine AS tailwind
+FROM docker.io/node:22-alpine@sha256:c9bb43423a6229aeddf3d16ae6aaa0ff71a0b2951ce18ec8fedb6f5d766cf286 AS tailwind
 WORKDIR /app
 
 RUN npm install -D tailwindcss cssnano postcss postcss-cli
@@ -20,12 +20,12 @@ RUN npx postcss --config ./build/csspostprocess/postcss.config.js \
     --dir assets/css \
     --ext ".min.css"
 
-FROM ghcr.io/a-h/templ:v0.2.778 AS templ
+FROM ghcr.io/a-h/templ:v0.2.778@sha256:5e9a7c306c62b6d7b5d5817f295545b69c24024c24cc89c2a9ae3dd5dcdcb463 AS templ
 COPY --chown=65532:65532 . /app
 WORKDIR /app
 RUN ["templ", "generate", "-path", "./views"]
 
-FROM docker.io/golang:1.23.1 AS builder
+FROM docker.io/golang:1.23.2@sha256:adee809c2d0009a4199a11a1b2618990b244c6515149fe609e2788ddf164bd10 AS builder
 COPY --from=templ /app /app
 WORKDIR /app
 
