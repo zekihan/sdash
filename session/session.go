@@ -7,24 +7,24 @@ import (
 	"time"
 )
 
-type Session struct {
+type Cookie struct {
 	ID            string `json:"id"`
 	Created       time.Time
 	ExpireTime    time.Time
 	Authenticated bool
 }
 
-func (s *Session) IsExpired() bool {
+func (s *Cookie) IsExpired() bool {
 	return s.ExpireTime.Before(time.Now())
 }
 
-func newSession() *Session {
+func NewCookie() *Cookie {
 	id, err := uuid.NewV7()
 	if err != nil {
 		log.Fatalf("Failed to generate session ID")
 	}
 	now := time.Now()
-	return &Session{
+	return &Cookie{
 		ID:            id.String(),
 		Created:       now,
 		ExpireTime:    now.Add(config.GetConfig().WebConfig.SessionTimeout),

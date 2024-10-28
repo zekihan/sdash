@@ -10,7 +10,6 @@ import (
 	"github.com/zekihan/sdash/routes/errorroutes"
 	"github.com/zekihan/sdash/routes/middleware"
 	"github.com/zekihan/sdash/routes/viewroutes"
-	"github.com/zekihan/sdash/session"
 	"github.com/zekihan/sdash/session/auth"
 	"github.com/zekihan/sdash/utils"
 	"net/http"
@@ -29,9 +28,6 @@ func init() {
 
 	// init oidc
 	auth.Init(cfg)
-
-	// init session
-	session.Init(cfg)
 
 	// init dashboard config
 	dashboard.GetConfig()

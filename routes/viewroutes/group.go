@@ -3,7 +3,6 @@ package viewroutes
 import (
 	"context"
 	"errors"
-	log "github.com/sirupsen/logrus"
 	"github.com/zekihan/sdash/config/dashboard"
 	"github.com/zekihan/sdash/routes"
 	"github.com/zekihan/sdash/views"
@@ -30,8 +29,7 @@ func GetGroup(w http.ResponseWriter, r *http.Request) {
 	}
 	filteredDashboard := &dashboard.Config{ServicesList: results}
 	err := views.Group(filteredDashboard, val).Render(r.Context(), w)
-	if errors.As(err, &context.Canceled) {
-		log.Debug("request cancelled")
+	if errors.Is(err, context.Canceled) {
 		return
 	}
 	routes.CheckError(w, err, http.StatusInternalServerError, "failed to render dashboard")

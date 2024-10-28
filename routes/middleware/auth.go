@@ -14,8 +14,8 @@ func AuthHandler(handler http.Handler) http.Handler {
 			handler.ServeHTTP(w, r)
 			return
 		}
-		sess, ok := getSessionFromCookie(r)
-		if !ok || !sess.Authenticated || sess.IsExpired() {
+		cookie, ok := getCookie(r)
+		if !ok || !cookie.Authenticated || cookie.IsExpired() {
 			redirect(w, r)
 			return
 		}
@@ -23,18 +23,14 @@ func AuthHandler(handler http.Handler) http.Handler {
 	})
 }
 
-func getSessionFromCookie(r *http.Request) (*session.Session, bool) {
+func getCookie(r *http.Request) (*session.Cookie, bool) {
 	cookieKey := config.GetConfig().WebConfig.AuthCookie
-	var cookie session.Session
+	var cookie session.Cookie
 	err := routes.GetCookie(r, cookieKey, &cookie)
 	if err != nil {
 		return nil, false
 	}
-	sess := session.Store.GetSession(cookie.ID)
-	if sess == nil {
-		return sess, false
-	}
-	return sess, true
+	return &cookie, true
 }
 
 func redirect(w http.ResponseWriter, r *http.Request, opts ...string) {
@@ -53,5 +49,16 @@ func redirect(w http.ResponseWriter, r *http.Request, opts ...string) {
 	if currentPath != "" {
 		url += "?redirect=" + currentPath
 	}
-	http.Redirect(w, r, url, http.StatusSeeOther)
+
+	isHx := false
+	if r.Header.Get("HX-Request") == "true" {
+		isHx = true
+	}
+	if !isHx {
+		http.Redirect(w, r, url, http.StatusSeeOther)
+	} else {
+		w.Header().Set("HX-Refresh", "true")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Unauthorized"))
+	}
 }

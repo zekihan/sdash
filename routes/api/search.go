@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"errors"
-	log "github.com/sirupsen/logrus"
 	"github.com/zekihan/sdash/config/dashboard"
 	"github.com/zekihan/sdash/routes"
 	"github.com/zekihan/sdash/search"
@@ -33,8 +32,7 @@ func GetSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	filteredDashboard := &dashboard.Config{ServicesList: result, GroupList: groups}
 	err := views.CardLists(filteredDashboard).Render(r.Context(), w)
-	if errors.As(err, &context.Canceled) {
-		log.Debug("request cancelled")
+	if errors.Is(err, context.Canceled) {
 		return
 	}
 	routes.CheckError(w, err, http.StatusInternalServerError, "failed to render card lists")

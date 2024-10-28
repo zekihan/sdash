@@ -65,7 +65,7 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sess := session.Store.NewSession()
+	sess := session.NewCookie()
 	sess.Authenticated = true
 	routes.SetCookie(w, r, config.GetConfig().WebConfig.AuthCookie, sess)
 

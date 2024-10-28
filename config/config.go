@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"github.com/gorilla/securecookie"
 	"github.com/sethvargo/go-envconfig"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
@@ -27,12 +28,14 @@ type Config struct {
 }
 
 type WebConfig struct {
-	BaseURL        string        `yaml:"base_url" env:"BASE_URL"`
-	Port           int           `yaml:"port" env:"PORT"`
-	Host           string        `yaml:"host" env:"HOST"`
-	AuthCookie     string        `yaml:"auth_cookie" env:"AUTH_COOKIE"`
-	SessionTimeout time.Duration `yaml:"session_timeout" env:"SESSION_TIMEOUT"`
-	SessionCleanup time.Duration `yaml:"session_cleanup" env:"SESSION_CLEANUP"`
+	BaseURL         string        `yaml:"base_url" env:"BASE_URL"`
+	Port            int           `yaml:"port" env:"PORT"`
+	Host            string        `yaml:"host" env:"HOST"`
+	AuthCookie      string        `yaml:"auth_cookie" env:"AUTH_COOKIE"`
+	SessionTimeout  time.Duration `yaml:"session_timeout" env:"SESSION_TIMEOUT"`
+	CookieHashKey   string        `yaml:"cookie_hash_key" env:"COOKIE_HASH_KEY"`
+	CookieBlockKey  string        `yaml:"cookie_block_key" env:"COOKIE_BLOCK_KEY"`
+	UseSecureCookie *bool         `yaml:"use_secure_cookie" env:"USE_SECURE_COOKIE"`
 }
 
 type LogConfig struct {
@@ -152,7 +155,6 @@ func GetDefaultConfig() *Config {
 			Host:           "127.0.0.1",
 			AuthCookie:     "SDS__AUTH",
 			SessionTimeout: 24 * time.Hour,
-			SessionCleanup: 1 * time.Hour,
 		},
 		LogConfig: LogConfig{
 			Level:         logrus.WarnLevel,
@@ -168,4 +170,32 @@ func GetDefaultConfig() *Config {
 			},
 		},
 	}
+}
+
+func (c *WebConfig) GetHashKey() []byte {
+	hashKey := c.CookieHashKey
+	var hashKeyByte []byte
+	if hashKey != "" {
+		hashKeyByte = []byte(hashKey)
+	} else {
+		hashKeyByte = securecookie.GenerateRandomKey(64)
+		if hashKeyByte == nil {
+			log.Fatal("Failed to generate hash key")
+		}
+	}
+	return hashKeyByte
+}
+
+func (c *WebConfig) GetBlockKey() []byte {
+	blockKey := c.CookieBlockKey
+	var blockKeyByte []byte
+	if blockKey != "" {
+		blockKeyByte = []byte(blockKey)
+	} else {
+		blockKeyByte = securecookie.GenerateRandomKey(32)
+		if blockKeyByte == nil {
+			log.Fatal("Failed to generate block key")
+		}
+	}
+	return blockKeyByte
 }
