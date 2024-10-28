@@ -28,14 +28,13 @@ type Config struct {
 }
 
 type WebConfig struct {
-	BaseURL         string        `yaml:"base_url" env:"BASE_URL"`
-	Port            int           `yaml:"port" env:"PORT"`
-	Host            string        `yaml:"host" env:"HOST"`
-	AuthCookie      string        `yaml:"auth_cookie" env:"AUTH_COOKIE"`
-	SessionTimeout  time.Duration `yaml:"session_timeout" env:"SESSION_TIMEOUT"`
-	CookieHashKey   string        `yaml:"cookie_hash_key" env:"COOKIE_HASH_KEY"`
-	CookieBlockKey  string        `yaml:"cookie_block_key" env:"COOKIE_BLOCK_KEY"`
-	UseSecureCookie *bool         `yaml:"use_secure_cookie" env:"USE_SECURE_COOKIE"`
+	BaseURL        string        `yaml:"base_url" env:"BASE_URL"`
+	Port           int           `yaml:"port" env:"PORT"`
+	Host           string        `yaml:"host" env:"HOST"`
+	AuthCookie     string        `yaml:"auth_cookie" env:"AUTH_COOKIE"`
+	SessionTimeout time.Duration `yaml:"session_timeout" env:"SESSION_TIMEOUT"`
+	CookieHashKey  string        `yaml:"cookie_hash_key" env:"COOKIE_HASH_KEY"`
+	CookieBlockKey string        `yaml:"cookie_block_key" env:"COOKIE_BLOCK_KEY"`
 }
 
 type LogConfig struct {

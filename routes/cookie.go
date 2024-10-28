@@ -15,7 +15,7 @@ func getSecureCookie() *securecookie.SecureCookie {
 	return sc
 }
 
-func SetCookie(w http.ResponseWriter, r *http.Request, name string, value interface{}, opts ...string) {
+func SetCookie(w http.ResponseWriter, _ *http.Request, name string, value interface{}, opts ...string) {
 	sameSite := http.SameSiteLaxMode
 	path := "/"
 	switch len(opts) {
@@ -47,19 +47,12 @@ func SetCookie(w http.ResponseWriter, r *http.Request, name string, value interf
 		return
 	}
 
-	isSecure := false
-	if config.GetDefaultConfig().WebConfig.UseSecureCookie != nil {
-		isSecure = *config.GetDefaultConfig().WebConfig.UseSecureCookie
-	} else {
-		isSecure = r.TLS != nil
-	}
-
 	c := &http.Cookie{
 		Name:     name,
 		Value:    encode,
 		Path:     path,
 		MaxAge:   int(config.GetConfig().WebConfig.SessionTimeout.Seconds()),
-		Secure:   isSecure,
+		Secure:   true,
 		HttpOnly: true,
 		SameSite: sameSite,
 	}
