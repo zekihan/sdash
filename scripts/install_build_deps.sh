@@ -7,7 +7,7 @@ DIR=$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)
 cd "${DIR}/.."
 
 TEMPL_VERSION="v0.2.793"
-TAILWINDCSS_VERSION="v3.4.10"
+TAILWINDCSS_VERSION="v3.4.14"
 
 arch=$(uname -m)
 if [ "${arch}" = "x86_64" ]; then
