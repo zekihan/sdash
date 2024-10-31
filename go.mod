@@ -6,7 +6,7 @@ require (
 	github.com/a-h/templ v0.2.793
 	github.com/coreos/go-oidc/v3 v3.11.0
 	github.com/felixge/httpsnoop v1.0.4
-	github.com/fsnotify/fsnotify v1.7.0
+	github.com/fsnotify/fsnotify v1.8.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/securecookie v1.1.2
 	github.com/hashicorp/golang-lru/v2 v2.0.7
