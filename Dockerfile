@@ -1,5 +1,5 @@
 # First stage: Tailwind CSS build
-FROM docker.io/node:23-alpine@sha256:340cd3926b5116aae1207d6ca1e444d1009aad687c4ad37aa3afbe8a3db591d5 AS tailwind
+FROM docker.io/node:23-alpine@sha256:7f1b1f0e5098f6684258398d58c6c03e5f29a50b405acf9d7be9d2c83bd6c24f AS tailwind
 WORKDIR /app
 
 RUN npm install -D tailwindcss cssnano postcss postcss-cli
