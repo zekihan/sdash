@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/config/dashboard"
@@ -13,6 +14,7 @@ import (
 	"github.com/zekihan/sdash/session/auth"
 	"github.com/zekihan/sdash/utils"
 	"net/http"
+	"os"
 )
 
 var cfg *config.Config
@@ -20,6 +22,14 @@ var stdChain middleware.Chain
 var authChain middleware.Chain
 
 func init() {
+	envFile := ".env"
+	if f, err := os.Stat(envFile); !(os.IsNotExist(err) || f.IsDir()) {
+		err = godotenv.Load()
+		if err != nil {
+			panic("Error loading .env file")
+		}
+	}
+
 	// init config
 	cfg = config.GetConfig()
 
@@ -40,7 +50,8 @@ func init() {
 }
 
 func main() {
-	log.Infof("Starting SDash %s in %s", utils.GetVersion(), utils.GetEnvironment())
+	log.Info("Starting sdash server")
+	log.Infof(utils.GetStartupInfo())
 
 	go dashboard.WatchConfigFile()
 

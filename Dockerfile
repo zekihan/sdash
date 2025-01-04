@@ -1,5 +1,5 @@
 # First stage: Tailwind CSS build
-FROM docker.io/node:23-alpine@sha256:c61b6b12a3c96373673cd52d7ecee2314e82bca5d541eecf0bc6aee870c8c6f7 AS tailwind
+FROM --platform=$BUILDPLATFORM docker.io/node:23-alpine@sha256:c61b6b12a3c96373673cd52d7ecee2314e82bca5d541eecf0bc6aee870c8c6f7 AS tailwind
 WORKDIR /app
 
 RUN npm install -D tailwindcss cssnano postcss postcss-cli
@@ -20,30 +20,37 @@ RUN npx postcss --config ./build/csspostprocess/postcss.config.js \
     --dir assets/css \
     --ext ".min.css"
 
-FROM ghcr.io/a-h/templ:v0.3.819@sha256:e1655b722c17a0537a4525f842c1c3cb6fd468679eeffa05b370d9e85777db75 AS templ
-COPY --chown=65532:65532 . /app
-WORKDIR /app
-RUN ["templ", "generate", "-path", "./views"]
+FROM --platform=$BUILDPLATFORM busybox:1.37.0@sha256:2919d0172f7524b2d8df9e50066a682669e6d170ac0f6a49676d54358fe970b5 AS builder
 
-FROM docker.io/golang:1.23.4@sha256:7ea4c9dcb2b97ff8ee80a67db3d44f98c8ffa0d191399197007d8459c1453041 AS builder
-COPY --from=templ /app /app
-WORKDIR /app
+ARG TARGETPLATFORM
 
-COPY go.mod .
-COPY go.sum .
+COPY dist/* /usr/bin/
 
-ENV CGO_ENABLED=0 GO111MODULE=on GOOS=linux
+RUN case ${TARGETPLATFORM} in \
+        "linux/amd64")    ARCH="amd64"    ;; \
+        "linux/arm64")    ARCH="arm64"    ;; \
+        "linux/riscv64")  ARCH="riscv64"  ;; \
+        "linux/ppc64le")  ARCH="ppc64le"  ;; \
+        "linux/s390x")    ARCH="s390x"    ;; \
+        "linux/386")      ARCH="386"      ;; \
+        "linux/arm/v7")   ARCH="arm_v7"   ;; \
+        "linux/arm/v6")   ARCH="arm_v6"   ;; \
+    esac && \
+    mv /usr/bin/sdash_linux_${ARCH} /usr/bin/sdash
 
-RUN go mod download
+FROM scratch AS final
 
-COPY . .
-
-RUN ./scripts/build.sh
-
-FROM scratch
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY ./assets ./assets
 COPY --from=tailwind /app/assets/css ./assets/css
-COPY --from=builder /app/tmp/bin/sdash ./
+COPY --from=builder /usr/bin/sdash /usr/bin/sdash
 
-ENTRYPOINT ["./sdash"]
+ENTRYPOINT ["sdash"]
+
+LABEL org.opencontainers.image.authors="38537758+zekihan@users.noreply.github.com" \
+    org.opencontainers.image.url="https://example.com/" \
+    org.opencontainers.image.documentation="https://docs.example.com/" \
+    org.opencontainers.image.source="https://github.com/zekihan/sdash" \
+    org.opencontainers.image.vendor="zekihan" \
+    org.opencontainers.image.licenses="AGPL-3.0" \
+    org.opencontainers.image.title="Sdash" \
+    org.opencontainers.image.description="Sdash is a tool to help you optimize your dashboards for speed and cost."
