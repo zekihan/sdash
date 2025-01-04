@@ -4,7 +4,7 @@ go 1.23.4
 
 require (
 	github.com/a-h/templ v0.3.819
-	github.com/coreos/go-oidc/v3 v3.11.0
+	github.com/coreos/go-oidc/v3 v3.12.0
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/google/uuid v1.6.0
