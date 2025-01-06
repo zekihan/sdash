@@ -5,9 +5,6 @@ version: 2
 
 project_name: sdash
 
-env:
-  - ENVIRONMENT={{ if index .Env "ENVIRONMENT"  }}{{ .Env.ENVIRONMENT }}{{ else }}default{{ end }}
-
 before:
   hooks:
     - go fmt ./...
@@ -17,14 +14,15 @@ before:
     - tailwindcss --config ./build/tailwind/tailwind.config.js --input ./build/tailwind/input.css --output assets/css/tailwind.css
 
 builds:
-  - binary: sdash_{{.Os}}_{{.Arch}}{{ if .Arm }}_v{{.Arm}}{{ end }}
+  - id: sdash
+    binary: sdash_{{.Os}}_{{.Arch}}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}/sdash
     no_unique_dist_dir: true
     env:
       - CGO_ENABLED=0
     ldflags:
       - -s -w
       - -X github.com/zekihan/sdash/utils.Version={{.Version}}
-      - -X github.com/zekihan/sdash/utils.BuildDate={{.Date}}
+      - -X github.com/zekihan/sdash/utils.BuildDate={{.CommitTimestamp}}
       - -X github.com/zekihan/sdash/utils.CommitHash={{.Commit}}
       - -X github.com/zekihan/sdash/utils.GitTreeState={{.GitTreeState}}
     flags:
@@ -58,13 +56,61 @@ builds:
       - goos: windows
         goarch: arm
 
+universal_binaries:
+  - id: sdash
+    replace: false
+
+archives:
+  - id: sdash
+    name_template: '{{ .ProjectName }}_v{{ .Version }}_{{.Os}}_{{.Arch}}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - 'LICENSE*'
+      - 'license*'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-SNAPSHOT-{{.ShortCommit}}"
+
 report_sizes: true
 
+checksum:
+  name_template: 'checksums.txt'
+
 changelog:
-  disable: true
+  disable: false
+  use: github
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: "Bug fixes"
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: "Chores"
+      regexp: '^.*?chore(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: "CI"
+      regexp: '^.*?ci(\([[:word:]]+\))??!?:.+$'
+      order: 3
+    - title: Others
+      order: 999
 
 release:
-  disable: true
+  disable: false
+  draft: false
+  replace_existing_draft: true
+  prerelease: auto
+  make_latest: true
+  mode: keep-existing
+  footer: |
+    Docker images
+    ---
+    - `docker pull docker.io/zekihan/sdash:v{{.Version}}`
+    - `docker pull ghcr.io/zekihan/sdash:v{{.Version}}`
 
 metadata:
   mod_timestamp: "{{ .CommitTimestamp }}"
