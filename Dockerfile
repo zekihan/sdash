@@ -2,7 +2,7 @@ FROM --platform=$BUILDPLATFORM alpine:3.21.2@sha256:56fa17d2a7e7f168a043a2712e63
 RUN apk update && apk add ca-certificates
 
 # First stage: Tailwind CSS build
-FROM --platform=$BUILDPLATFORM docker.io/node:23-alpine@sha256:5fa65b6bf6be7103c73159c0dddcfd9de5e49c3465d75656ef41e43cece968de AS tailwind
+FROM --platform=$BUILDPLATFORM docker.io/node:23-alpine@sha256:b404b0504b0e95ed3610bd33cc1e929baa8f89fe08f8e2666b5d82f2308bc8c2 AS tailwind
 WORKDIR /app
 
 RUN npm install -D tailwindcss cssnano postcss postcss-cli
