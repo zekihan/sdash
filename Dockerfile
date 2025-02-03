@@ -5,7 +5,7 @@ RUN apk update && apk add ca-certificates
 FROM --platform=$BUILDPLATFORM docker.io/node:23-alpine@sha256:70eca392e3d52cb7d133b52d52e8600d8c410a5eaee6105c11324b28868f9ac9 AS tailwind
 WORKDIR /app
 
-RUN npm install -D tailwindcss cssnano postcss postcss-cli
+RUN npm install -D tailwindcss @tailwindcss/cli @tailwindcss/postcss cssnano postcss postcss-cli
 
 COPY build ./build
 COPY views ./views
@@ -13,7 +13,7 @@ COPY assets/css ./assets/css
 
 ENV NODE_ENV=production
 
-RUN npx tailwindcss --config ./build/tailwind/tailwind.config.js \
+RUN npx @tailwindcss/cli --config ./build/tailwind/tailwind.config.js \
                 -i ./build/tailwind/input.css \
                 -o assets/css/tailwind.css
 
