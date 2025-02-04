@@ -40,9 +40,12 @@ install_tailwindcss() {
 	# Install tailwindcss if not already installed
 	if [ "${FORCE}" -eq 1 ] || ! command -v tailwindcss >/dev/null 2>&1; then
 		echo "Installing tailwindcss with version ${TAILWINDCSS_VERSION}"
-		curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/"${TAILWINDCSS_VERSION}"/tailwindcss-"${tailwindcss_os}"-"${tailwindcss_arch}"
-		chmod +x tailwindcss-"${tailwindcss_os}"-"${tailwindcss_arch}"
-		sudo mv tailwindcss-"${tailwindcss_os}"-"${tailwindcss_arch}" /usr/local/bin/tailwindcss
+		# TODO fix to real release url after related PR merged - https://github.com/tailwindlabs/tailwindcss/pull/16244
+		tailwindcss_url="https://assets.tailwindcss.com/tailwindcss-${tailwindcss_os}-${tailwindcss_arch}"
+		echo "Downloading ${tailwindcss_url}"
+		curl -sLO "${tailwindcss_url}"
+		chmod +x "tailwindcss-${tailwindcss_os}-${tailwindcss_arch}"
+		sudo mv "tailwindcss-${tailwindcss_os}-${tailwindcss_arch}" /usr/local/bin/tailwindcss
 	fi
 }
 
@@ -63,3 +66,6 @@ done
 
 install_templ
 install_tailwindcss
+
+echo "Installed templ version: $(templ version)"
+echo "Installed tailwindcss version: $(tailwindcss version)"
