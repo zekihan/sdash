@@ -1,7 +1,5 @@
 package views
 
-import "github.com/zekihan/sdash/utils"
-
 templ header() {
 	<head>
 		<meta charset="UTF-8"/>
@@ -17,11 +15,6 @@ templ header() {
 }
 
 templ css() {
-	if utils.IsProduction() {
-		<link rel="stylesheet" href="/assets/css/tailwind.min.css"/>
-		<link rel="stylesheet" href="/assets/css/scroll.min.css"/>
-	} else {
-		<link rel="stylesheet" href="/assets/css/tailwind.css"/>
-		<link rel="stylesheet" href="/assets/css/scroll.css"/>
-	}
+	<link rel="stylesheet" href="/assets/css/tailwind.min.css" onerror="this.onerror=null;this.href='/assets/css/tailwind.css'"/>
+	<link rel="stylesheet" href="/assets/css/scroll.min.css" onerror="this.onerror=null;this.href='/assets/css/scroll.css'"/>
 }

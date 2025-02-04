@@ -18,7 +18,3 @@ func GetStartupInfo() string {
 	}
 	return fmt.Sprintf("Version: %s, Build Date: %s, CommitHash: %s%s", Version, BuildDate, CommitHash, dirty)
 }
-
-func IsProduction() bool {
-	return Version != "dev"
-}
