@@ -13,7 +13,7 @@ COPY assets/css ./assets/css
 
 ENV NODE_ENV=production
 
-RUN npx @tailwindcss/cli --config ./build/tailwind/tailwind.config.js \
+RUN npx @tailwindcss/cli \
                 -i ./build/tailwind/input.css \
                 -o assets/css/tailwind.css
 

@@ -11,7 +11,7 @@ before:
     - go mod tidy
     - templ generate -path ./views
     - templ fmt ./views
-    - tailwindcss --config ./build/tailwind/tailwind.config.js --input ./build/tailwind/input.css --output assets/css/tailwind.css
+    - tailwindcss --input ./build/tailwind/input.css --output assets/css/tailwind.css
 
 builds:
   - id: sdash

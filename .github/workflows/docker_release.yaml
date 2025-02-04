@@ -44,6 +44,7 @@ jobs:
           sudo apt-get install make
           chmod +x .github/scripts/install_build_deps.sh
           bash .github/scripts/install_build_deps.sh
+          tailwindcss --input ./build/tailwind/input.css --output assets/css/tailwind.css
 
       - name: Make build
         run: |
