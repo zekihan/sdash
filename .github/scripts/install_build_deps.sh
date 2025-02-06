@@ -7,7 +7,7 @@ DIR=$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)
 cd "${DIR}/.."
 
 TEMPL_VERSION="v0.3.833"
-TAILWINDCSS_VERSION="v4.0.3"
+TAILWINDCSS_VERSION="v4.0.4"
 
 arch=$(uname -m)
 if [ "${arch}" = "x86_64" ]; then
@@ -40,9 +40,7 @@ install_tailwindcss() {
 	# Install tailwindcss if not already installed
 	if [ "${FORCE}" -eq 1 ] || ! command -v tailwindcss >/dev/null 2>&1; then
 		echo "Installing tailwindcss with version ${TAILWINDCSS_VERSION}"
-		# TODO fix to real release url after related PR merged - https://github.com/tailwindlabs/tailwindcss/pull/16244
-		tailwindcss_url="https://assets.tailwindcss.com/tailwindcss-${tailwindcss_os}-${tailwindcss_arch}"
-		echo "Downloading ${tailwindcss_url}"
+		tailwindcss_url="https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWINDCSS_VERSION}/tailwindcss-${tailwindcss_os}-${tailwindcss_arch}"
 		curl -sLO "${tailwindcss_url}"
 		chmod +x "tailwindcss-${tailwindcss_os}-${tailwindcss_arch}"
 		sudo mv "tailwindcss-${tailwindcss_os}-${tailwindcss_arch}" /usr/local/bin/tailwindcss
