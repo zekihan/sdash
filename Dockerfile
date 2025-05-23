@@ -23,7 +23,7 @@ RUN npx postcss --config ./build/csspostprocess/postcss.config.js \
     --dir assets/css \
     --ext ".min.css"
 
-FROM --platform=$BUILDPLATFORM busybox:1.37.0@sha256:ce4f0c0a6e67a3a1469e7a8e1fe781f64ba7c652823fdf2d5eac677dd4d095d6 AS builder
+FROM --platform=$BUILDPLATFORM busybox:1.37.0@sha256:3308bdfbc80b8e960219232df14f233a3c56979f392f56b0d9a8bc290c7dfd76 AS builder
 
 ARG TARGETPLATFORM
 
