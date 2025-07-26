@@ -3,7 +3,7 @@ module github.com/zekihan/sdash
 go 1.24.5
 
 require (
-	github.com/a-h/templ v0.3.920
+	github.com/a-h/templ v0.3.924
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/fsnotify/fsnotify v1.9.0
