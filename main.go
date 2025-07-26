@@ -51,7 +51,7 @@ func init() {
 
 func main() {
 	log.Info("Starting sdash server")
-	log.Infof(utils.GetStartupInfo())
+	log.Info(utils.GetStartupInfo())
 
 	go dashboard.WatchConfigFile()
 
