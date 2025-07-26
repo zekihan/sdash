@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/joho/godotenv"
+	"github.com/justinas/alice"
 	log "github.com/sirupsen/logrus"
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/config/dashboard"
@@ -18,8 +19,8 @@ import (
 )
 
 var cfg *config.Config
-var stdChain middleware.Chain
-var authChain middleware.Chain
+var stdChain alice.Chain
+var authChain alice.Chain
 
 func init() {
 	envFile := ".env"
@@ -45,8 +46,8 @@ func init() {
 	icon.InitIconCache()
 
 	// init middleware
-	stdChain = middleware.New(middleware.RecoverHandler, middleware.Logging)
-	authChain = middleware.New(middleware.AuthHandler)
+	stdChain = alice.New(middleware.RecoverHandler, middleware.Logging)
+	authChain = alice.New(middleware.AuthHandler)
 }
 
 func main() {
