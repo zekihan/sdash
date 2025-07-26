@@ -69,8 +69,9 @@ func GetConfig() *Config {
 		cfg := GetConfigFromFile()
 		ctx := context.Background()
 		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
-			Target:   cfg,
-			Lookuper: envconfig.PrefixLookuper(EnvKeyPrefix, envconfig.OsLookuper()),
+			Target:           cfg,
+			Lookuper:         envconfig.PrefixLookuper(EnvKeyPrefix, envconfig.OsLookuper()),
+			DefaultOverwrite: true,
 		}); err != nil {
 			log.Fatalf("Failed to process env config: %v", err)
 		}
@@ -103,8 +104,9 @@ func getConfigFromEnv[T any](config *T, envKey string) *T {
 	}
 	ctx := context.Background()
 	if err := envconfig.ProcessWith(ctx, &envconfig.Config{
-		Target:   config,
-		Lookuper: envconfig.PrefixLookuper(envKey, envconfig.OsLookuper()),
+		Target:           config,
+		Lookuper:         envconfig.PrefixLookuper(envKey, envconfig.OsLookuper()),
+		DefaultOverwrite: true,
 	}); err != nil {
 		log.Fatalf("Failed to process config from env: %v", err)
 	}
