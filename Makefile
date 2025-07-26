@@ -17,6 +17,7 @@ run: build
 ## tidy: format code and tidy modfile
 .PHONY: tidy
 tidy:
+	templ fmt ./views
 	${GO_EXECUTABLE} fmt ./...
 	${GO_EXECUTABLE} mod tidy -v
 
