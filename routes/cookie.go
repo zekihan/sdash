@@ -8,14 +8,7 @@ import (
 
 var sc *securecookie.SecureCookie
 
-func getSecureCookie() *securecookie.SecureCookie {
-	if sc == nil {
-		sc = securecookie.New(config.GetConfig().WebConfig.GetHashKey(), config.GetConfig().WebConfig.GetBlockKey())
-	}
-	return sc
-}
-
-func SetCookie(w http.ResponseWriter, _ *http.Request, name string, value interface{}, opts ...string) {
+func CreateNewCookie(name string, value interface{}, opts ...string) (*http.Cookie, error) {
 	sameSite := http.SameSiteLaxMode
 	path := "/"
 	switch len(opts) {
@@ -44,7 +37,7 @@ func SetCookie(w http.ResponseWriter, _ *http.Request, name string, value interf
 
 	encode, err := getSecureCookie().Encode(name, value)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	c := &http.Cookie{
@@ -56,6 +49,23 @@ func SetCookie(w http.ResponseWriter, _ *http.Request, name string, value interf
 		HttpOnly: true,
 		SameSite: sameSite,
 	}
+
+	return c, nil
+}
+
+func getSecureCookie() *securecookie.SecureCookie {
+	if sc == nil {
+		sc = securecookie.New(config.GetConfig().WebConfig.GetHashKey(), config.GetConfig().WebConfig.GetBlockKey())
+	}
+	return sc
+}
+
+func SetCookie(w http.ResponseWriter, _ *http.Request, name string, value interface{}, opts ...string) {
+	c, err := CreateNewCookie(name, value, opts...)
+	if err != nil {
+		return
+	}
+
 	http.SetCookie(w, c)
 }
 
