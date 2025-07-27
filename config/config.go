@@ -114,7 +114,7 @@ func getConfigFromEnv[T any](config *T, envKey string) *T {
 }
 
 func GetConfigFromFile() *Config {
-	config := GetDefaultConfig()
+	newConfig := GetDefaultConfig()
 	file, err := os.Open(getConfigFilePath())
 	if err != nil {
 		log.Fatalf("Failed to open config file: %v", err)
@@ -124,11 +124,11 @@ func GetConfigFromFile() *Config {
 	if err != nil {
 		log.Fatalf("Failed to read config file: %v", err)
 	}
-	err = yaml.Unmarshal(content, config)
+	err = yaml.Unmarshal(content, newConfig)
 	if err != nil {
 		log.Fatalf("Failed to parse config file: %v", err)
 	}
-	return config
+	return newConfig
 }
 
 func getConfigFilePath() string {
