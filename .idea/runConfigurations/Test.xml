@@ -2,6 +2,10 @@
   <configuration default="false" name="Test" type="GoTestRunConfiguration" factoryName="Go Test">
     <module name="sdash" />
     <working_directory value="$PROJECT_DIR$" />
+    <envs>
+      <env name="CONFIG_DIR" value="$PROJECT_DIR$" />
+      <env name="DASHBOARD_CONFIG_DIR" value="$PROJECT_DIR$" />
+    </envs>
     <kind value="DIRECTORY" />
     <package value="github.com/zekihan/sdash" />
     <directory value="$PROJECT_DIR$" />
