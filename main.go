@@ -2,18 +2,21 @@ package main
 
 import (
 	"fmt"
-	"github.com/joho/godotenv"
 	"github.com/justinas/alice"
 	log "github.com/sirupsen/logrus"
+	"github.com/zekihan/go-commons/cookie"
+	"github.com/zekihan/go-commons/environment"
+	"github.com/zekihan/go-commons/middleware"
+	"github.com/zekihan/go-commons/utils"
+	"github.com/zekihan/go-commons/web/errorroutes"
+	"github.com/zekihan/go-commons/web/health"
+	"github.com/zekihan/go-commons/web/ping"
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/config/dashboard"
 	"github.com/zekihan/sdash/routes/api"
 	"github.com/zekihan/sdash/routes/api/icon"
-	"github.com/zekihan/sdash/routes/errorroutes"
-	"github.com/zekihan/sdash/routes/middleware"
 	"github.com/zekihan/sdash/routes/viewroutes"
 	"github.com/zekihan/sdash/session/auth"
-	"github.com/zekihan/sdash/utils"
 	"net/http"
 	"os"
 )
@@ -23,19 +26,27 @@ var stdChain alice.Chain
 var authChain alice.Chain
 
 func init() {
-	envFile := ".env"
-	if f, err := os.Stat(envFile); !(os.IsNotExist(err) || f.IsDir()) {
-		err = godotenv.Load()
-		if err != nil {
-			panic("Error loading .env file")
-		}
+	err := environment.LoadEnvironmentFile()
+	if err != nil {
+		log.Errorf("Error loading environment file: %v", err)
+		os.Exit(1)
 	}
 
 	// init config
 	cfg = config.GetConfig()
 
-	// init logger
-	utils.InitLogger(cfg)
+	// Init logger.
+	err = utils.InitLogger(&utils.LoggerConfig{
+		Path:          cfg.LogConfig.Path,
+		Level:         cfg.LogConfig.Level,
+		AddMethodName: cfg.LogConfig.AddMethodName,
+	})
+	if err != nil {
+		log.Errorf("Error initializing logger: %v", err)
+		os.Exit(1)
+	}
+
+	cookie.InitSecureCookie(cfg.WebConfig.GetHashKey(), cfg.WebConfig.GetBlockKey())
 
 	// init oidc
 	auth.Init(cfg)
@@ -47,7 +58,7 @@ func init() {
 
 	// init middleware
 	stdChain = alice.New(middleware.RecoverHandler, middleware.Logging)
-	authChain = alice.New(middleware.AuthHandler)
+	authChain = alice.New(middleware.GetAuthMiddlewareForCookie(auth.IsAuthEnabled(), cfg.WebConfig.AuthCookie))
 }
 
 func main() {
@@ -57,8 +68,8 @@ func main() {
 	go dashboard.WatchConfigFile()
 
 	// API routes
-	http.HandleFunc("/api/ping", api.GetPing)
-	http.HandleFunc("/api/health", api.GetHealth)
+	http.HandleFunc("/api/ping", ping.GetPing)
+	http.HandleFunc("/api/health", health.GetHealth)
 	http.Handle("/api/search", authChain.ThenFunc(api.GetSearch))
 	http.Handle("/api/proxy/icon", authChain.ThenFunc(icon.Proxy))
 

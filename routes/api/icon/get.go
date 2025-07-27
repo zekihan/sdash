@@ -2,7 +2,7 @@ package icon
 
 import (
 	"errors"
-	"github.com/zekihan/sdash/routes"
+	"github.com/zekihan/go-commons/web"
 	"io"
 	"net/http"
 	"time"
@@ -13,7 +13,7 @@ var errMissingURL = errors.New("missing url parameter")
 func Proxy(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
 	if url == "" {
-		routes.CheckError(w, errMissingURL, http.StatusBadRequest, "missing url parameter")
+		web.CheckError(w, errMissingURL, http.StatusBadRequest, "missing url parameter")
 		return
 	}
 
@@ -21,19 +21,19 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 
 	if icon, ok := cache.get(url); ok {
 		w.Header().Set("Content-Type", icon.ContentType)
-		routes.Write(w, icon.Data)
+		web.Write(w, icon.Data)
 		return
 	}
 
 	client := getHTTPClient()
 	response, err := client.Get(url)
-	if routes.CheckError(w, err, http.StatusInternalServerError, "failed to fetch icon") {
+	if web.CheckError(w, err, http.StatusInternalServerError, "failed to fetch icon") {
 		return
 	}
 
 	defer response.Body.Close()
 	body, err := io.ReadAll(response.Body)
-	if routes.CheckError(w, err, http.StatusInternalServerError, "failed to read icon") {
+	if web.CheckError(w, err, http.StatusInternalServerError, "failed to read icon") {
 		return
 	}
 
@@ -41,7 +41,7 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", contentType)
 
 	w.WriteHeader(response.StatusCode)
-	if routes.Write(w, body) {
+	if web.Write(w, body) {
 		return
 	}
 

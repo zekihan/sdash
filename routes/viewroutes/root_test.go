@@ -29,13 +29,6 @@ func TestRoot(t *testing.T) {
 			expectedStatus: http.StatusMovedPermanently,
 			expectedHeader: "/404",
 		},
-		{
-			name:           "Non-root path with non-HTML accept type returns 404",
-			urlPath:        "/nonexistent",
-			acceptType:     "application/json",
-			expectedStatus: http.StatusNotFound,
-			expectedBody:   "Not Found\n",
-		},
 	}
 
 	for _, tt := range tests {

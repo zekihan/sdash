@@ -3,8 +3,8 @@ package api
 import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/oauth2-proxy/mockoidc"
+	"github.com/zekihan/go-commons/cookie"
 	"github.com/zekihan/sdash/config"
-	"github.com/zekihan/sdash/routes"
 	"github.com/zekihan/sdash/session/auth"
 	"golang.org/x/oauth2"
 	"net/http"
@@ -112,7 +112,7 @@ func TestAuthCallback(t *testing.T) {
 
 			// Set state cookie if provided
 			if tc.stateCookie != "" {
-				c, err := routes.CreateNewCookie("state", tc.stateCookie)
+				c, err := cookie.CreateNewCookie("state", tc.stateCookie)
 				if err != nil {
 					t.Fatalf("failed to create cookie: %v", err)
 				}

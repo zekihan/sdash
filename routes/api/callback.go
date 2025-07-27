@@ -1,9 +1,10 @@
 package api
 
 import (
+	"github.com/zekihan/go-commons/cookie"
+	"github.com/zekihan/go-commons/session"
+	"github.com/zekihan/go-commons/web"
 	"github.com/zekihan/sdash/config"
-	"github.com/zekihan/sdash/routes"
-	"github.com/zekihan/sdash/session"
 	"github.com/zekihan/sdash/session/auth"
 	"net/http"
 	"strings"
@@ -22,7 +23,7 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var state string
-	err := routes.GetCookie(r, "state", &state)
+	err := cookie.GetCookie(r, "state", &state)
 	if err != nil {
 		http.Error(w, "state not found", http.StatusBadRequest)
 		return
@@ -45,7 +46,7 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	oauth2Token, err := oidcSource.Config.Exchange(ctx, r.URL.Query().Get("code"))
-	if routes.CheckError(w, err, http.StatusInternalServerError, "Failed to exchange token") {
+	if web.CheckError(w, err, http.StatusInternalServerError, "Failed to exchange token") {
 		return
 	}
 
@@ -55,19 +56,19 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	idToken, err := oidcSource.Verify(ctx, rawIDToken)
-	if routes.CheckError(w, err, http.StatusInternalServerError, "Failed to verify ID token") {
+	if web.CheckError(w, err, http.StatusInternalServerError, "Failed to verify ID token") {
 		return
 	}
 
 	var profile map[string]interface{}
 	err = idToken.Claims(&profile)
-	if routes.CheckError(w, err, http.StatusInternalServerError, "Failed to get claims") {
+	if web.CheckError(w, err, http.StatusInternalServerError, "Failed to get claims") {
 		return
 	}
 
 	sess := session.NewCookie()
 	sess.Authenticated = true
-	routes.SetCookie(w, r, config.GetConfig().WebConfig.AuthCookie, sess)
+	cookie.SetCookie(w, r, config.GetConfig().WebConfig.AuthCookie, sess)
 
 	http.Redirect(w, r, redirected, http.StatusSeeOther)
 }

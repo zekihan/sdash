@@ -3,8 +3,8 @@ package viewroutes
 import (
 	"context"
 	"errors"
+	"github.com/zekihan/go-commons/web"
 	"github.com/zekihan/sdash/config/dashboard"
-	"github.com/zekihan/sdash/routes"
 	"github.com/zekihan/sdash/views"
 	"net/http"
 )
@@ -32,5 +32,5 @@ func GetGroup(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, context.Canceled) {
 		return
 	}
-	routes.CheckError(w, err, http.StatusInternalServerError, "failed to render dashboard")
+	web.CheckError(w, err, http.StatusInternalServerError, "failed to render dashboard")
 }

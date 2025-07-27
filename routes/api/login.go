@@ -2,9 +2,10 @@ package api
 
 import (
 	"fmt"
-	"github.com/zekihan/sdash/routes"
+	"github.com/zekihan/go-commons/cookie"
+	"github.com/zekihan/go-commons/utils"
+	"github.com/zekihan/go-commons/web"
 	"github.com/zekihan/sdash/session/auth"
-	"github.com/zekihan/sdash/utils"
 	"net/http"
 )
 
@@ -23,9 +24,12 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	redirected := r.URL.Query().Get("redirect")
 
 	state, err := utils.RandString(16)
-	routes.CheckError(w, err, http.StatusInternalServerError, "Failed to generate state")
+	if web.CheckError(w, err, http.StatusInternalServerError, "Failed to generate state") {
+		return
+	}
+
 	state = fmt.Sprintf("%s$$$%s", state, redirected)
-	routes.SetCookie(w, r, "state", state)
+	cookie.SetCookie(w, r, "state", state)
 
 	authURL := oidcSource.Config.AuthCodeURL(state)
 	http.Redirect(w, r, authURL, http.StatusSeeOther)
