@@ -17,13 +17,14 @@ run: build
 ## tidy: format code and tidy modfile
 .PHONY: tidy
 tidy:
+	templ generate -path ./views
 	templ fmt ./views
 	${GO_EXECUTABLE} fmt ./...
 	${GO_EXECUTABLE} mod tidy -v
 
 ## audit: run quality control checks
 .PHONY: audit
-audit:
+audit: tidy
 	${GO_EXECUTABLE} mod verify
 	${GO_EXECUTABLE} vet ./...
 	${GO_EXECUTABLE} run honnef.co/go/tools/cmd/staticcheck@latest -checks=all,-ST1000,-U1000 ./...
@@ -32,13 +33,13 @@ audit:
 
 ## test: run all tests
 .PHONY: test
-test:
+test: tidy
 	CONFIG_DIR=${MAIN_PACKAGE_PATH} DASHBOARD_CONFIG_DIR=${MAIN_PACKAGE_PATH} CGO_ENABLED=0 ${GO_EXECUTABLE} test -v -buildvcs -vet=all ./...
 	CONFIG_DIR=${MAIN_PACKAGE_PATH} DASHBOARD_CONFIG_DIR=${MAIN_PACKAGE_PATH} CGO_ENABLED=1 ${GO_EXECUTABLE} test -v -race -buildvcs -vet=all ./...
 
 ## test/cover: run all tests and display coverage
 .PHONY: test/cover
-test/cover:
+test/cover: tidy
 	mkdir -p ${TMP_DIR}
 	CONFIG_DIR=${MAIN_PACKAGE_PATH} DASHBOARD_CONFIG_DIR=${MAIN_PACKAGE_PATH} ${GO_EXECUTABLE} test -v -buildvcs -vet=off -coverprofile=${TMP_DIR}/coverage.out ./...
 	${GO_EXECUTABLE} tool cover -html=${TMP_DIR}/coverage.out
