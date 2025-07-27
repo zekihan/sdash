@@ -1,7 +1,7 @@
 package icon
 
-type icon struct {
-	url         string
-	data        []byte
-	contentType string
+type Icon struct {
+	URL         string
+	Data        []byte
+	ContentType string
 }
