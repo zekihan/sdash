@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"fmt"
 	"math"
 	"net/url"
 	"slices"
@@ -16,60 +15,70 @@ type Service struct {
 	Cluster   string   `yaml:"cluster"`
 	URL       string   `yaml:"url"`
 	Icon      string   `yaml:"icon"`
-	ProxyIcon bool     `yaml:"proxy_icon"`
 	Tags      []string `yaml:"tags"`
 	Order     int      `yaml:"order"`
+	ProxyIcon bool     `yaml:"proxyIcon"`
 }
 
 func (s *Service) GetIconURL() string {
 	if !s.ProxyIcon {
 		return s.Icon
 	}
-	return fmt.Sprintf("/api/proxy/icon?url=%s", url.QueryEscape(s.Icon))
+
+	return "/api/proxy/icon?url=" + url.QueryEscape(s.Icon)
 }
 
-func (c *Config) postProcessServices() {
-	if c.Services == nil {
-		c.Services = make(map[string]*Service)
+func (cfg *Config) postProcessServices() {
+	if cfg.Services == nil {
+		cfg.Services = make(map[string]*Service)
 	}
+
 	serviceList := make(ServicesList, 0)
-	for k, v := range c.Services {
-		v.Key = k
-		if v.Tags == nil {
-			v.Tags = make([]string, 0)
+
+	for key, value := range cfg.Services {
+		value.Key = key
+		if value.Tags == nil {
+			value.Tags = make([]string, 0)
 		}
-		if v.Group == "" {
-			v.Group = "others"
+
+		if value.Group == "" {
+			value.Group = "others"
 		}
-		if _, ok := c.Groups[v.Group]; ok {
-			group := c.Groups[v.Group]
+
+		if _, ok := cfg.Groups[value.Group]; ok {
+			group := cfg.Groups[value.Group]
 			group.HasAny = true
 		} else {
-			c.Groups[v.Group] = &Group{
-				Key:    v.Group,
-				Title:  v.Group,
+			cfg.Groups[value.Group] = &Group{
+				Key:    value.Group,
+				Title:  value.Group,
 				Order:  math.MaxInt,
 				HasAny: true,
 			}
 		}
-		serviceList = append(serviceList, v)
+
+		serviceList = append(serviceList, value)
 	}
-	serviceList.Sort(c.OrderServicesVia)
-	c.ServicesList = serviceList
+
+	serviceList.Sort(cfg.OrderServicesVia)
+	cfg.ServicesList = serviceList
 }
 
-func (c *ServicesList) Sort(ordering Ordering) {
+func (servicesList *ServicesList) Sort(ordering Ordering) {
 	if ordering != OrderingNone {
-		slices.SortStableFunc(*c, func(a, b *Service) int {
+		slices.SortStableFunc(*servicesList, func(firstItem, secondItem *Service) int {
 			switch ordering {
 			case OrderingTitle:
-				return strings.Compare(a.Title, b.Title)
+				return strings.Compare(firstItem.Title, secondItem.Title)
 			case OrderingKey:
-				return strings.Compare(a.Key, b.Key)
+				return strings.Compare(firstItem.Key, secondItem.Key)
 			case OrderingOrder:
-				return a.Order - b.Order
+				return firstItem.Order - secondItem.Order
+			case OrderingNone:
+				return 0
+			default:
+				return 0
 			}
-			return 0
 		})
 	}
 }

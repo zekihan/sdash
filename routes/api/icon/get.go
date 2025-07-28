@@ -2,18 +2,27 @@ package icon
 
 import (
 	"errors"
-	"github.com/zekihan/go-commons/web"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/zekihan/go-commons/web"
 )
 
 var errMissingURL = errors.New("missing url parameter")
+
+const (
+	defaultTimeout             = 5 * time.Second
+	defaultIdleConns           = 10
+	defaultIdleConnTimeout     = 30 * time.Second
+	defaultMaxIdleConnsPerHost = 10
+)
 
 func Proxy(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
 	if url == "" {
 		web.CheckError(w, errMissingURL, http.StatusBadRequest, "missing url parameter")
+
 		return
 	}
 
@@ -22,16 +31,24 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 	if icon, ok := cache.get(url); ok {
 		w.Header().Set("Content-Type", icon.ContentType)
 		web.Write(w, icon.Data)
+
 		return
 	}
 
 	client := getHTTPClient()
-	response, err := client.Get(url)
+
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, url, http.NoBody)
+	if web.CheckError(w, err, http.StatusInternalServerError, "failed to create request") {
+		return
+	}
+
+	response, err := client.Do(req)
 	if web.CheckError(w, err, http.StatusInternalServerError, "failed to fetch icon") {
 		return
 	}
 
 	defer response.Body.Close()
+
 	body, err := io.ReadAll(response.Body)
 	if web.CheckError(w, err, http.StatusInternalServerError, "failed to read icon") {
 		return
@@ -41,6 +58,7 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", contentType)
 
 	w.WriteHeader(response.StatusCode)
+
 	if web.Write(w, body) {
 		return
 	}
@@ -54,13 +72,13 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 
 func getHTTPClient() *http.Client {
 	return &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: defaultTimeout,
 		Transport: &http.Transport{
-			MaxIdleConns:        10,
-			IdleConnTimeout:     30 * time.Second,
+			MaxIdleConns:        defaultIdleConns,
+			IdleConnTimeout:     defaultIdleConnTimeout,
 			DisableCompression:  true,
 			DisableKeepAlives:   false,
-			MaxIdleConnsPerHost: 10,
+			MaxIdleConnsPerHost: defaultMaxIdleConnsPerHost,
 		},
 	}
 }

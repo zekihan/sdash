@@ -1,16 +1,21 @@
+//nolint:forbidigo // This package configures log packages.
 package dashboard
 
 import (
 	"errors"
-	"github.com/fsnotify/fsnotify"
-	log "github.com/sirupsen/logrus"
-	cfg "github.com/zekihan/sdash/config"
-	"gopkg.in/yaml.v3"
+	"fmt"
 	"io"
 	"os"
 	"path"
 	"sync"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
+	"gopkg.in/yaml.v3"
+
+	log "github.com/sirupsen/logrus"
+
+	generalConfig "github.com/zekihan/sdash/config"
 )
 
 const configFile = "dashboard.yaml"
@@ -20,74 +25,96 @@ var (
 	config *Config
 )
 
-type GroupList []*Group
-type ServicesList []*Service
+var ErrConfigFileIsDirectory = errors.New("config file is a directory")
+
+type (
+	GroupList    []*Group
+	ServicesList []*Service
+)
 
 type Config struct {
+	LastModTime      time.Time           `yaml:"-"`
 	Services         map[string]*Service `yaml:"services"`
-	ServicesList     ServicesList        `yaml:"-"`
-	OrderServicesVia Ordering            `yaml:"order_services_via"`
 	Groups           map[string]*Group   `yaml:"groups"`
-	GroupList        GroupList           `yaml:"-"`
-	OrderGroupsVia   Ordering            `yaml:"order_groups_via"`
 	SearchConfig     *SearchConfig       `yaml:"search"`
-	lastModTime      time.Time           `yaml:"-"`
+	OrderServicesVia Ordering            `yaml:"orderServicesVia"`
+	OrderGroupsVia   Ordering            `yaml:"orderGroupsVia"`
+	ServicesList     ServicesList        `yaml:"-"`
+	GroupList        GroupList           `yaml:"-"`
 }
 
 func GetConfig() *Config {
 	if getCurrentConfig() == nil {
 		reload()
 	}
+
 	return getCurrentConfig()
 }
 
 func getCurrentConfig() *Config {
 	mutex.RLock()
 	defer mutex.RUnlock()
+
 	return config
 }
 
 func getConfigFromFile() (*Config, error) {
-	config := &Config{}
+	newConfig := &Config{}
 	configPath := getConfigFilePath()
+
 	fileInfo, err := os.Stat(configPath)
 	if err != nil {
-		return config, err
+		return newConfig, fmt.Errorf("failed to stat config file: %w", err)
 	}
+
 	if fileInfo.IsDir() {
-		return config, errors.New("config file is a directory")
+		return newConfig, ErrConfigFileIsDirectory
 	}
+
 	currMod := fileInfo.ModTime()
-	config.lastModTime = currMod
+	newConfig.LastModTime = currMod
+
 	file, err := os.Open(configPath)
 	if err != nil {
 		log.Errorf("Failed to open config file: %v", err)
-		return config, err
+
+		return newConfig, fmt.Errorf("failed to open config file: %w", err)
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		fileErr := file.Close()
+		if fileErr != nil {
+			log.Errorf("Failed to close config file: %v", fileErr)
+		}
+	}(file)
+
 	content, err := io.ReadAll(file)
 	if err != nil {
 		log.Errorf("Failed to read config file: %v", err)
-		return config, err
+
+		return newConfig, fmt.Errorf("failed to read config file: %w", err)
 	}
-	err = yaml.Unmarshal(content, config)
+
+	err = yaml.Unmarshal(content, newConfig)
 	if err != nil {
 		log.Errorf("Failed to parse config file: %v", err)
-		return config, err
+
+		return newConfig, fmt.Errorf("failed to parse config file: %w", err)
 	}
-	config.postProcessConfig()
-	return config, nil
+
+	newConfig.postProcessConfig()
+
+	return newConfig, nil
 }
 
-func (c *Config) postProcessConfig() {
-	c.postProcessGroups()
-	c.postProcessServices()
-	c.postProcessSearchConfig()
+func (cfg *Config) postProcessConfig() {
+	cfg.postProcessGroups()
+	cfg.postProcessServices()
+	cfg.postProcessSearchConfig()
 }
 
 func WatchConfigFile() {
-	if cfg.GetConfig().Dashboard.Reload.Enabled {
-		if cfg.GetConfig().Dashboard.Reload.UseFsNotify {
+	if generalConfig.GetConfig().Dashboard.Reload.Enabled {
+		if generalConfig.GetConfig().Dashboard.Reload.UseFsNotify {
 			watchConfigFileViaFsNotify()
 		} else {
 			watchConfigFileViaModTime()
@@ -96,29 +123,33 @@ func WatchConfigFile() {
 }
 
 func watchConfigFileViaModTime() {
-	for {
-		time.Sleep(cfg.GetConfig().Dashboard.Reload.PollInterval)
+	ticker := time.NewTicker(generalConfig.GetConfig().Dashboard.Reload.PollInterval)
+	defer ticker.Stop()
+
+	for range ticker.C {
 		configPath := getConfigFilePath()
+
 		var lastMod time.Time
+
 		cd := getCurrentConfig()
 		if cd == nil {
 			lastMod = time.Now()
 		} else {
-			lastMod = cd.lastModTime
+			lastMod = cd.LastModTime
 		}
+
 		fileInfo, err := os.Stat(configPath)
-		if err != nil {
+		if err != nil || fileInfo.IsDir() {
 			return
 		}
-		if fileInfo.IsDir() {
-			return
-		}
+
 		currMod := fileInfo.ModTime()
 		if currMod.IsZero() {
 			return
 		}
+
 		if lastMod.Unix() < currMod.Unix() {
-			log.Printf("Config file changed: %s", configPath)
+			log.Infof("Config file changed: %s", configPath)
 			reload()
 		}
 	}
@@ -126,26 +157,44 @@ func watchConfigFileViaModTime() {
 
 func watchConfigFileViaFsNotify() {
 	configPath := getConfigFilePath()
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatalf("Failed to create watcher: %v", err)
 	}
-	defer watcher.Close()
+	defer func(watcher *fsnotify.Watcher) {
+		watcherErr := watcher.Close()
+		if watcherErr != nil {
+			log.Errorf("Failed to close watcher: %v", watcherErr)
+		}
+	}(watcher)
+
 	err = watcher.AddWith(configPath)
 	if err != nil {
-		log.Fatalf("Failed to watch config file: %v", err)
+		watcherErr := watcher.Close()
+		if watcherErr != nil {
+			log.Errorf("Failed to close watcher: %v", watcherErr)
+		}
+
+		log.Fatalf( //nolint:gocritic // closed above
+			"Failed to watch config file: %v",
+			err,
+		)
 	}
+
 	for {
 		log.Debugf("Watching config file: %s", configPath)
+
 		select {
 		case event := <-watcher.Events:
 			log.Debugf("Config file changed. Event: %v", event)
+
 			if event.Has(fsnotify.Write) {
-				log.Printf("Config file changed: %s", event.Name)
+				log.Infof("Config file changed: %s", event.Name)
 				reload()
 			}
 		case err := <-watcher.Errors:
-			log.Printf("Watcher error: %v", err)
+			log.Infof("Watcher error: %v", err)
 		}
 	}
 }
@@ -153,12 +202,15 @@ func watchConfigFileViaFsNotify() {
 func reload() {
 	mutex.Lock()
 	defer mutex.Unlock()
+
 	configFromFile, err := getConfigFromFile()
 	if err == nil {
 		config = configFromFile
+
 		return
 	}
-	if !cfg.GetConfig().Dashboard.Reload.ContinueOnError {
+
+	if !generalConfig.GetConfig().Dashboard.Reload.ContinueOnError {
 		panic(err)
 	}
 }
@@ -168,14 +220,18 @@ func getConfigFilePath() string {
 	if configPath != "" {
 		return configPath
 	}
+
 	configDir := os.Getenv("DASHBOARD_CONFIG_DIR")
 	if configDir == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
 			log.Fatalf("%v", err)
 		}
+
 		configDir = cwd
 	}
+
 	configPath = path.Join(configDir, configFile)
+
 	return configPath
 }

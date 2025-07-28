@@ -1,8 +1,9 @@
 package search
 
 import (
-	"github.com/zekihan/sdash/config/dashboard"
 	"testing"
+
+	"github.com/zekihan/sdash/config/dashboard"
 )
 
 func TestFuzzySearch(t *testing.T) {
@@ -23,12 +24,15 @@ func TestFuzzySearch(t *testing.T) {
 			results := FuzzySearch(test.query, dashboard.GetConfig().ServicesList)
 			for _, expectedKey := range test.expected {
 				found := false
+
 				for _, result := range results {
 					if result.Key == expectedKey {
 						found = true
+
 						break
 					}
 				}
+
 				if !found {
 					t.Errorf("expected service with key %s not found in results", expectedKey)
 				}

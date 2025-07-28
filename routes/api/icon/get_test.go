@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/zekihan/go-commons/web"
 )
 
 func TestProxy(t *testing.T) {
@@ -12,7 +14,7 @@ func TestProxy(t *testing.T) {
 	InitIconCache()
 
 	t.Run("missing url parameter", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/icon", nil)
+		req := httptest.NewRequest(http.MethodGet, "/icon", http.NoBody)
 		w := httptest.NewRecorder()
 
 		Proxy(w, req)
@@ -24,32 +26,34 @@ func TestProxy(t *testing.T) {
 
 	t.Run("successful proxy request", func(t *testing.T) {
 		// Create mock server
-		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "image/png")
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("fake-icon-data"))
-		}))
+		mockServer := httptest.NewServer(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "image/png")
+				w.WriteHeader(http.StatusOK)
+				web.WriteString(w, "fake-icon-data")
+			}),
+		)
 		defer mockServer.Close()
 
-		req := httptest.NewRequest(http.MethodGet, "/icon?url="+mockServer.URL, nil)
-		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/icon?url="+mockServer.URL, http.NoBody)
+		rr := httptest.NewRecorder()
 
-		Proxy(w, req)
+		Proxy(rr, req)
 
-		if w.Code != http.StatusOK {
-			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %d, got %d", http.StatusOK, rr.Code)
 		}
 
-		if w.Header().Get("Content-Type") != "image/png" {
-			t.Errorf("expected Content-Type image/png, got %s", w.Header().Get("Content-Type"))
+		if rr.Header().Get("Content-Type") != "image/png" {
+			t.Errorf("expected Content-Type image/png, got %s", rr.Header().Get("Content-Type"))
 		}
 
-		if w.Header().Get("Cache-Control") != "public, max-age=86400" {
+		if rr.Header().Get("Cache-Control") != "public, max-age=86400" {
 			t.Errorf("expected Cache-Control header to be set")
 		}
 
-		if w.Body.String() != "fake-icon-data" {
-			t.Errorf("expected body 'fake-icon-data', got %s", w.Body.String())
+		if rr.Body.String() != "fake-icon-data" {
+			t.Errorf("expected body 'fake-icon-data', got %s", rr.Body.String())
 		}
 	})
 
@@ -62,22 +66,22 @@ func TestProxy(t *testing.T) {
 			ContentType: "image/png",
 		})
 
-		req := httptest.NewRequest(http.MethodGet, "/icon?url="+testURL, nil)
-		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/icon?url="+testURL, http.NoBody)
+		rr := httptest.NewRecorder()
 
-		Proxy(w, req)
+		Proxy(rr, req)
 
-		if w.Code != http.StatusOK {
-			t.Errorf("expected status %d, got %d", http.StatusOK, w.Code)
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %d, got %d", http.StatusOK, rr.Code)
 		}
 
-		if w.Body.String() != "cached-icon-data" {
-			t.Errorf("expected cached data, got %s", w.Body.String())
+		if rr.Body.String() != "cached-icon-data" {
+			t.Errorf("expected cached data, got %s", rr.Body.String())
 		}
 	})
 
 	t.Run("invalid url", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/icon?url=invalid-url", nil)
+		req := httptest.NewRequest(http.MethodGet, "/icon?url=invalid-url", http.NoBody)
 		w := httptest.NewRecorder()
 
 		Proxy(w, req)

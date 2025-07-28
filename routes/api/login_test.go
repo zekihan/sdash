@@ -1,12 +1,13 @@
 package api
 
 import (
-	"github.com/zekihan/sdash/config"
-	"golang.org/x/oauth2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"golang.org/x/oauth2"
+
+	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/session/auth"
 )
 
@@ -31,7 +32,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	t.Run("Valid OIDC Key", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/login/test", nil)
+		req := httptest.NewRequest(http.MethodGet, "/login/test", http.NoBody)
 		rec := httptest.NewRecorder()
 
 		req.SetPathValue("oidc", "test")
@@ -43,7 +44,7 @@ func TestLogin(t *testing.T) {
 	})
 
 	t.Run("Invalid OIDC Key", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/login/invalid", nil)
+		req := httptest.NewRequest(http.MethodGet, "/login/invalid", http.NoBody)
 		rec := httptest.NewRecorder()
 
 		req.SetPathValue("oidc", "invalid")
@@ -81,7 +82,7 @@ func TestLoginDefault(t *testing.T) {
 	}
 
 	t.Run("Redirect to Default OIDC", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/login", nil)
+		req := httptest.NewRequest(http.MethodGet, "/login", http.NoBody)
 		rec := httptest.NewRecorder()
 
 		LoginDefault(rec, req)

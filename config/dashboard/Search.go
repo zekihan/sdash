@@ -20,17 +20,20 @@ type SearchConfig struct {
 	Separator string            `yaml:"separator"`
 }
 
-func (c *Config) postProcessSearchConfig() {
-	if c.SearchConfig == nil {
-		c.SearchConfig = &SearchConfig{}
+func (cfg *Config) postProcessSearchConfig() {
+	if cfg.SearchConfig == nil {
+		cfg.SearchConfig = &SearchConfig{}
 	}
-	if c.SearchConfig.From == nil {
-		c.SearchConfig.From = &SearchFromConfig{}
+
+	if cfg.SearchConfig.From == nil {
+		cfg.SearchConfig.From = &SearchFromConfig{}
 	}
-	if c.SearchConfig.From.Service == nil {
-		c.SearchConfig.From.Service = []Field{FieldTitle}
+
+	if cfg.SearchConfig.From.Service == nil {
+		cfg.SearchConfig.From.Service = []Field{FieldTitle}
 	}
-	if c.SearchConfig.From.Group == nil {
-		c.SearchConfig.From.Group = []Field{FieldTitle}
+
+	if cfg.SearchConfig.From.Group == nil {
+		cfg.SearchConfig.From.Group = []Field{FieldTitle}
 	}
 }

@@ -1,6 +1,6 @@
 package views
 
-import _ "github.com/a-h/templ"
+import _ "github.com/a-h/templ" // Import templ to ensure it is initialized
 
 func Dummy() {
 	// This is a dummy function to make sure the package is not empty

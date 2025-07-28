@@ -1,37 +1,41 @@
 package api
 
 import (
-	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/oauth2-proxy/mockoidc"
-	"github.com/zekihan/go-commons/cookie"
-	"github.com/zekihan/sdash/config"
-	"github.com/zekihan/sdash/session/auth"
-	"golang.org/x/oauth2"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/oauth2-proxy/mockoidc"
+	"github.com/zekihan/go-commons/cookie"
+	"golang.org/x/oauth2"
+
+	"github.com/zekihan/sdash/config"
+	"github.com/zekihan/sdash/session/auth"
 )
 
 func TestAuthCallback(t *testing.T) {
-	m, err := mockoidc.Run()
+	mockOidcServer, err := mockoidc.Run()
 	if err != nil {
 		t.Fatalf("Failed to start mock OIDC server: %v", err)
 	}
 
 	t.Cleanup(func() {
-		if err := m.Shutdown(); err != nil {
-			t.Errorf("Failed to shutdown mock OIDC server: %v", err)
+		shutdownErr := mockOidcServer.Shutdown()
+		if shutdownErr != nil {
+			t.Errorf("Failed to shutdown mock OIDC server: %v", shutdownErr)
 		}
 	})
 
-	provider, err := oidc.NewProvider(t.Context(), m.Issuer())
+	provider, err := oidc.NewProvider(t.Context(), mockOidcServer.Issuer())
 	if err != nil {
 		t.Fatalf("Failed to create provider: %v", err)
 	}
+
 	oauth2Config := &oauth2.Config{
-		ClientID:     m.ClientID,
-		ClientSecret: m.ClientSecret,
+		ClientID:     mockOidcServer.ClientID,
+		ClientSecret: mockOidcServer.ClientSecret,
 		RedirectURL:  "/user/oauth2/test/callback",
 		Endpoint:     provider.Endpoint(),
 		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "offline", "groups", "openid"},
@@ -42,8 +46,8 @@ func TestAuthCallback(t *testing.T) {
 		"test": {
 			Key: "test",
 			SelfConfig: &config.OidcConfig{
-				ClientID:     m.ClientID,
-				ClientSecret: m.ClientSecret,
+				ClientID:     mockOidcServer.ClientID,
+				ClientSecret: mockOidcServer.ClientSecret,
 			},
 			Config:   oauth2Config,
 			Provider: provider,
@@ -52,10 +56,10 @@ func TestAuthCallback(t *testing.T) {
 
 	// Test cases
 	tests := []struct {
+		queryParams    url.Values
 		name           string
 		oidcKey        string
 		stateCookie    string
-		queryParams    url.Values
 		expectedStatus int
 	}{
 		{
@@ -100,13 +104,13 @@ func TestAuthCallback(t *testing.T) {
 		//	stateCookie:    "state$$$redirect",
 		//	queryParams:    url.Values{"state": {"state$$$redirect"}, "code": {"valid_code"}},
 		//	expectedStatus: http.StatusSeeOther,
-		//},
+		// },
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create request
-			req := httptest.NewRequest(http.MethodGet, "/callback", nil)
+			req := httptest.NewRequest(http.MethodGet, "/callback", http.NoBody)
 			req.URL.RawQuery = tc.queryParams.Encode()
 			req.SetPathValue("oidc", tc.oidcKey)
 
@@ -116,9 +120,11 @@ func TestAuthCallback(t *testing.T) {
 				if err != nil {
 					t.Fatalf("failed to create cookie: %v", err)
 				}
+
 				req.AddCookie(c)
 			}
-			m.QueueCode("valid_code")
+
+			mockOidcServer.QueueCode("valid_code")
 
 			// Create response recorder
 			rr := httptest.NewRecorder()

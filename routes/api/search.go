@@ -3,12 +3,14 @@ package api
 import (
 	"context"
 	"errors"
+	"net/http"
+	"slices"
+
 	"github.com/zekihan/go-commons/web"
+
 	"github.com/zekihan/sdash/config/dashboard"
 	"github.com/zekihan/sdash/search"
 	"github.com/zekihan/sdash/views"
-	"net/http"
-	"slices"
 )
 
 func GetSearch(w http.ResponseWriter, r *http.Request) {
@@ -20,6 +22,7 @@ func GetSearch(w http.ResponseWriter, r *http.Request) {
 	if query != "" {
 		result = search.FuzzySearch(query, result)
 		result.Sort(config.OrderServicesVia)
+
 		groups = make(dashboard.GroupList, 0)
 		for _, service := range result {
 			if !slices.ContainsFunc(groups, func(group *dashboard.Group) bool {
@@ -28,12 +31,16 @@ func GetSearch(w http.ResponseWriter, r *http.Request) {
 				groups = append(groups, config.Groups[service.Group])
 			}
 		}
+
 		groups.Sort(config.OrderGroupsVia)
 	}
+
 	filteredDashboard := &dashboard.Config{ServicesList: result, GroupList: groups}
+
 	err := views.CardLists(filteredDashboard).Render(r.Context(), w)
 	if errors.Is(err, context.Canceled) {
 		return
 	}
+
 	web.CheckError(w, err, http.StatusInternalServerError, "failed to render card lists")
 }

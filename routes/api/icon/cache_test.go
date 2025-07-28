@@ -1,12 +1,9 @@
 package icon
 
 import (
+	"bytes"
 	"testing"
 )
-
-type testIcon struct {
-	Icon
-}
 
 func TestIconCache(t *testing.T) {
 	InitIconCache()
@@ -29,7 +26,7 @@ func TestIconCache(t *testing.T) {
 			t.Errorf("expected url %s, got %s", testIcon.URL, retrieved.URL)
 		}
 
-		if string(retrieved.Data) != string(testIcon.Data) {
+		if !bytes.Equal(retrieved.Data, testIcon.Data) {
 			t.Errorf("expected data %s, got %s", testIcon.Data, retrieved.Data)
 		}
 
@@ -90,6 +87,7 @@ func TestInitIconCache(t *testing.T) {
 
 func TestIconCacheGetMiss(t *testing.T) {
 	InitIconCache()
+
 	_, ok := cache.get("non-existent-key")
 	if ok {
 		t.Fatal("expected cache miss for non-existent key")

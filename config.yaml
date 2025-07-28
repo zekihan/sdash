@@ -1,22 +1,22 @@
 web:
-    base_url: http://localhost:33000
+    baseUrl: http://localhost:33000
     host: 127.0.0.1
     port: 33000
-#    cookie_hash_key: ""
-#    cookie_block_key: ""
+#    cookieHashKey: ""
+#    cookieBlockKey: ""
 log:
     level: debug
 dashboard:
     reload:
         enabled: true
-        poll_interval: 30s
-        use_mod_time: false
-        use_fs_notify: true
-        continue_on_error: true
+        pollInterval: 30s
+        useModTime: false
+        useFsNotify: true
+        continueOnError: true
 oidc:
     authentik:
         enabled: true
         default: true
-#        client_id: ""
-#        client_secret: ""
-#        discovery_endpoint: ""
+#        clientId: ""
+#        clientSecret: ""
+#        discoveryEndpoint: ""
