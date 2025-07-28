@@ -170,6 +170,7 @@ linters:
         - c echo.Context
         - t testing.T
         - f *foo.Bar
+        - f func()
         - e error
         - i int
         - j int
