@@ -4,7 +4,7 @@ go 1.24.5
 
 require (
 	github.com/a-h/templ v0.3.924
-	github.com/coreos/go-oidc/v3 v3.14.1
+	github.com/coreos/go-oidc/v3 v3.15.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gorilla/securecookie v1.1.2
 	github.com/hashicorp/golang-lru/v2 v2.0.7
