@@ -1,7 +1,3 @@
-FROM --platform=$BUILDPLATFORM alpine:3.22.1@sha256:4bcff63911fcb4448bd4fdacec207030997caf25e9bea4045fa6c8c44de311d1 AS certs
-RUN apk update && apk add ca-certificates
-
-# First stage: Tailwind CSS build
 FROM --platform=$BUILDPLATFORM docker.io/node:23-alpine@sha256:a34e14ef1df25b58258956049ab5a71ea7f0d498e41d0b514f4b8de09af09456 AS tailwind
 WORKDIR /app
 
@@ -41,9 +37,8 @@ RUN case ${TARGETPLATFORM} in \
     esac && \
     mv ./dist/sdash_linux_${ARCH}/sdash /usr/bin/sdash
 
-FROM scratch AS final
+FROM --platform=$BUILDPLATFORM zekihan/distroless:v0.1.0@sha256:10b374be9f7ce8e4a9fbb14a3ed548267dcb50cbfc8e5a403142146199a4d380 AS final
 
-COPY --from=certs /etc/ssl/certs /etc/ssl/certs
 COPY ./assets ./assets
 COPY --from=tailwind /app/assets/css ./assets/css
 COPY --from=builder /usr/bin/sdash /usr/bin/sdash
