@@ -122,6 +122,8 @@ linters:
       min-occurrences: 4
     gocritic:
       enable-all: true
+      disabled-checks:
+        - unnamedResult
     gocyclo:
       min-complexity: 14
     godox:
