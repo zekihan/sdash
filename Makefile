@@ -18,7 +18,7 @@ run: build
 .PHONY: tidy
 tidy:
 	templ generate -path ./views
-	templ fmt ./views
+	templ fmt -prettier-required=true -prettier-command="npx prettier --use-tabs --stdin-filepath \$$TEMPL_PRETTIER_FILENAME" ./views
 	${GO_EXECUTABLE} fmt ./...
 	${GO_EXECUTABLE} mod tidy -v
 

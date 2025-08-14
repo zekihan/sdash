@@ -26,6 +26,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up Node
+        uses: actions/setup-node@v4.4.0
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+          cache-dependency-path: build/node/package-lock.json
+
       - name: Set up Go
         uses: actions/setup-go@v5.5.0
         with:

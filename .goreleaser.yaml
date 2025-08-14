@@ -10,7 +10,7 @@ before:
     - go fmt ./...
     - go mod tidy
     - templ generate -path ./views
-    - templ fmt ./views
+    - templ fmt -prettier-required=true -prettier-command="npx prettier --use-tabs --stdin-filepath \$TEMPL_PRETTIER_FILENAME" ./views
     - tailwindcss --input ./build/tailwind/input.css --output assets/css/tailwind.css
 
 builds:
