@@ -1,6 +1,6 @@
 module github.com/zekihan/sdash
 
-go 1.25.1
+go 1.25.2
 
 require (
 	github.com/a-h/templ v0.3.943
