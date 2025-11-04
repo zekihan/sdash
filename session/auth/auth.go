@@ -63,6 +63,7 @@ func Init(cfg *config.Config) {
 	ctx := context.Background()
 
 	processable := make(map[string]*config.OidcConfig, 0)
+
 	for key, val := range cfg.OidcConfig {
 		if val == nil {
 			continue

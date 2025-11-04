@@ -70,6 +70,7 @@ func TestGetConfigFilePath_EnvVar(t *testing.T) {
 func TestGetConfigFilePath_Default(t *testing.T) {
 	os.Unsetenv("DASHBOARD_CONFIG_PATH")
 	os.Unsetenv("DASHBOARD_CONFIG_DIR")
+
 	cwd, _ := os.Getwd()
 	expected := filepath.Join(cwd, configFile)
 
