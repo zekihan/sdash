@@ -34,7 +34,7 @@ jobs:
           cache-dependency-path: build/node/package-lock.json
 
       - name: Set up Go
-        uses: actions/setup-go@v6.0.0
+        uses: actions/setup-go@v6.1.0
         with:
           go-version-file: go.mod
           cache: true
