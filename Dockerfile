@@ -37,7 +37,7 @@ RUN case ${TARGETPLATFORM} in \
     esac && \
     mv ./dist/sdash_linux_${ARCH}/sdash /usr/bin/sdash
 
-FROM --platform=$BUILDPLATFORM zekihan/distroless:v0.1.0@sha256:e83751d90f747d237cfe414562187dbdc803a5763e09bd18fc0984479aef8a3f AS final
+FROM --platform=$BUILDPLATFORM zekihan/distroless:v0.1.0@sha256:90e95a99157572621982c472f9ca0fc8558e5ee2853b8e3d60d8156c92cdebf0 AS final
 
 COPY ./assets ./assets
 COPY --from=tailwind /app/assets/css ./assets/css
