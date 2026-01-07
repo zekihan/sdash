@@ -14,13 +14,13 @@ import (
 )
 
 func GetSearch(w http.ResponseWriter, r *http.Request) {
-	config := dashboard.GetConfig()
+	config := dashboard.GetConfigWithContext(r.Context())
 	result := config.ServicesList
 	groups := config.GroupList
 
 	query := r.URL.Query().Get("search")
 	if query != "" {
-		result = search.FuzzySearch(query, result)
+		result = search.FuzzySearch(r.Context(), query, result)
 		result.Sort(config.OrderServicesVia)
 
 		groups = make(dashboard.GroupList, 0)

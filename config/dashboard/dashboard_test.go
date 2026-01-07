@@ -33,7 +33,7 @@ groups:
 
 	mockConfigFile(t, yamlContent)
 
-	cfg, err := getConfigFromFile()
+	cfg, err := getConfigFromFile(t.Context())
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -52,7 +52,7 @@ func TestGetConfigFromFile_IsDir(t *testing.T) {
 
 	t.Setenv("DASHBOARD_CONFIG_PATH", tmpDir)
 
-	_, err := getConfigFromFile()
+	_, err := getConfigFromFile(t.Context())
 	if err == nil || err.Error() != "config file is a directory" {
 		t.Errorf("expected directory error, got %v", err)
 	}
@@ -61,7 +61,7 @@ func TestGetConfigFromFile_IsDir(t *testing.T) {
 func TestGetConfigFilePath_EnvVar(t *testing.T) {
 	t.Setenv("DASHBOARD_CONFIG_PATH", "/tmp/test-dashboard.yaml")
 
-	got := getConfigFilePath()
+	got := getConfigFilePath(t.Context())
 	if got != "/tmp/test-dashboard.yaml" {
 		t.Errorf("expected /tmp/test-dashboard.yaml, got %s", got)
 	}
@@ -74,7 +74,7 @@ func TestGetConfigFilePath_Default(t *testing.T) {
 	cwd, _ := os.Getwd()
 	expected := filepath.Join(cwd, configFile)
 
-	got := getConfigFilePath()
+	got := getConfigFilePath(t.Context())
 	if got != expected {
 		t.Errorf("expected %s, got %s", expected, got)
 	}
@@ -91,7 +91,7 @@ services:
 	// Set config to nil to force reload
 	config = nil
 
-	reload()
+	reload(t.Context())
 
 	if config == nil || config.Services["testsvc"] == nil {
 		t.Errorf("expected config to be loaded with 'testsvc'")
@@ -102,7 +102,7 @@ func TestGetCurrentConfig_ThreadSafe(t *testing.T) {
 	// Just ensure it returns the global config pointer
 	config = &Config{}
 
-	got := getCurrentConfig()
+	got := getCurrentConfig(t.Context())
 	if got != config {
 		t.Errorf("expected to get global config pointer")
 	}

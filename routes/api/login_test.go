@@ -20,7 +20,7 @@ func TestLogin(t *testing.T) {
 		},
 	}
 
-	cfg := config.GetConfig()
+	cfg := config.GetConfigWithContext(t.Context())
 	cfg.OidcConfig = map[string]*config.OidcConfig{
 		"test": {
 			Enabled:           true,
@@ -65,7 +65,7 @@ func TestLoginDefault(t *testing.T) {
 		},
 	}
 
-	cfg := config.GetConfig()
+	cfg := config.GetConfigWithContext(t.Context())
 	cfg.OidcConfig = map[string]*config.OidcConfig{
 		"test": {
 			Enabled:           true,

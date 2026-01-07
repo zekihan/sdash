@@ -89,8 +89,7 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 	sess := session.NewCookie()
 	sess.Authenticated = true
 
-	//nolint:contextcheck // false positive, cookie name is not a context value
-	cookieName := config.GetConfig().WebConfig.AuthCookie
+	cookieName := config.GetConfigWithContext(r.Context()).WebConfig.AuthCookie
 	cookie.SetCookie(w, r, cookieName, sess)
 
 	http.Redirect(w, r, redirected, http.StatusSeeOther)

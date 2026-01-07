@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/zekihan/sdash/config"
 )
@@ -110,9 +110,15 @@ func initSource(ctx context.Context, key string, val *config.OidcConfig, cfg *co
 	provider, err := oidc.NewProvider(ctxInner, val.DiscoveryEndpoint)
 	if err != nil {
 		cancel()
+		slog.ErrorContext(
+			ctx,
+			"Failed to initialize OIDC provider",
+			slog.String("key", key),
+			slog.Any("error", err),
+		)
 		//nolint:forbidigo,gocritic // do not want to handle errors here and the defer case already
 		// handled above.
-		log.Fatalf("Failed to create provider: %v", err)
+		os.Exit(1)
 	}
 
 	redirectURL := fmt.Sprintf("%s/user/oauth2/%s/callback", cfg.WebConfig.BaseURL, key)

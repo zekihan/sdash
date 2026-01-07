@@ -12,7 +12,7 @@ import (
 )
 
 func GetGroup(w http.ResponseWriter, r *http.Request) {
-	config := dashboard.GetConfig()
+	config := dashboard.GetConfigWithContext(r.Context())
 
 	group := r.PathValue("group")
 	if group == "" {

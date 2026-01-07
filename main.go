@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
+	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/justinas/alice"
@@ -14,8 +18,6 @@ import (
 	"github.com/zekihan/go-commons/web/errorroutes"
 	"github.com/zekihan/go-commons/web/health"
 	"github.com/zekihan/go-commons/web/ping"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/config/dashboard"
@@ -38,23 +40,22 @@ const (
 func init() {
 	err := environment.LoadEnvironmentFile()
 	if err != nil {
-		log.Errorf("Error loading environment file: %v", err)
+		slog.ErrorContext(
+			context.Background(),
+			"Failed to load environment file",
+			slog.Any("error", err),
+		)
 		os.Exit(1)
 	}
 
 	// Init config.
-	cfg = config.GetConfig()
+	cfg = config.GetConfigWithContext(context.Background())
 
 	// Init logger.
-	err = utils.InitLogger(&utils.LoggerConfig{
-		Path:          cfg.LogConfig.Path,
-		Level:         cfg.LogConfig.Level,
-		AddMethodName: cfg.LogConfig.AddMethodName,
+	utils.InitLogger(&utils.LoggerConfig{
+		Level:     cfg.LogConfig.Level,
+		AddSource: cfg.LogConfig.AddSource,
 	})
-	if err != nil {
-		log.Errorf("Error initializing logger: %v", err)
-		os.Exit(1)
-	}
 
 	cookie.InitSecureCookie(cfg.WebConfig.GetHashKey(), cfg.WebConfig.GetBlockKey())
 
@@ -62,7 +63,7 @@ func init() {
 	auth.Init(cfg)
 
 	// Init dashboard config.
-	dashboard.GetConfig()
+	dashboard.GetConfigWithContext(context.Background())
 
 	icon.InitIconCache()
 
@@ -74,8 +75,8 @@ func init() {
 }
 
 func main() {
-	log.Info("Starting sdash server")
-	log.Info(utils.GetStartupInfo())
+	slog.InfoContext(context.Background(), "Starting sdash server")
+	utils.LogVersionInfo(context.Background())
 
 	go dashboard.WatchConfigFile()
 
@@ -106,8 +107,15 @@ func main() {
 
 	port := cfg.WebConfig.Port
 	host := cfg.WebConfig.Host
-	log.Infof("Starting server on %s:%d", host, port)
-	log.Infof("Url: %s", cfg.WebConfig.BaseURL)
+	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	slog.InfoContext(context.Background(), "Starting server on http://"+addr)
+	slog.InfoContext(
+		context.Background(),
+		fmt.Sprintf("Listening on %s:%d", host, port),
+		slog.String("host", host),
+		slog.Int("port", port),
+		slog.String("base_url", cfg.WebConfig.BaseURL),
+	)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", host, port),
@@ -118,7 +126,7 @@ func main() {
 
 	err := srv.ListenAndServe()
 	if err != nil {
-		log.Errorf("Failed to start server: %v", err)
+		slog.ErrorContext(context.Background(), "Server failed to start", slog.Any("error", err))
 		os.Exit(1)
 	}
 }

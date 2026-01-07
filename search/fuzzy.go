@@ -1,6 +1,7 @@
 package search
 
 import (
+	"context"
 	"strings"
 
 	"github.com/sahilm/fuzzy"
@@ -13,10 +14,14 @@ const (
 	minSeparatorLength = 3
 )
 
-func FuzzySearch(query string, list dashboard.ServicesList) dashboard.ServicesList {
+func FuzzySearch(
+	ctx context.Context,
+	query string,
+	list dashboard.ServicesList,
+) dashboard.ServicesList {
 	resultsMap := make(map[int]bool)
 
-	searchable := getSearchable(list)
+	searchable := getSearchable(ctx, list)
 	for i := range searchable {
 		matches := fuzzy.FindNoSort(query, searchable[i])
 		for _, match := range matches {
@@ -35,8 +40,8 @@ func FuzzySearch(query string, list dashboard.ServicesList) dashboard.ServicesLi
 	return results
 }
 
-func getSearchable(list dashboard.ServicesList) [][]string {
-	config := dashboard.GetConfig()
+func getSearchable(ctx context.Context, list dashboard.ServicesList) [][]string {
+	config := dashboard.GetConfigWithContext(ctx)
 
 	size := len(config.SearchConfig.From.Group) + len(config.SearchConfig.From.Service)
 
@@ -53,7 +58,7 @@ func getSearchable(list dashboard.ServicesList) [][]string {
 
 		padding := len(config.SearchConfig.From.Group)
 		for j, field := range config.SearchConfig.From.Service {
-			searchable[padding+j][i] = GetSearchableFromService(field, service)
+			searchable[padding+j][i] = GetSearchableFromService(ctx, field, service)
 		}
 	}
 
@@ -77,8 +82,12 @@ func getSearchableFromGroup(field dashboard.Field, group *dashboard.Group) strin
 	}
 }
 
-func GetSearchableFromService(field dashboard.Field, service *dashboard.Service) string {
-	separator := getSeparator()
+func GetSearchableFromService(
+	ctx context.Context,
+	field dashboard.Field,
+	service *dashboard.Service,
+) string {
+	separator := getSeparator(ctx)
 
 	switch field {
 	case dashboard.FieldKey:
@@ -96,8 +105,8 @@ func GetSearchableFromService(field dashboard.Field, service *dashboard.Service)
 	}
 }
 
-func getSeparator() string {
-	separator := dashboard.GetConfig().SearchConfig.Separator
+func getSeparator(ctx context.Context) string {
+	separator := dashboard.GetConfigWithContext(ctx).SearchConfig.Separator
 	if separator == "" {
 		return defaultSeparator
 	}

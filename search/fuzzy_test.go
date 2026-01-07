@@ -21,7 +21,11 @@ func TestFuzzySearch(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.query, func(t *testing.T) {
-			results := FuzzySearch(test.query, dashboard.GetConfig().ServicesList)
+			results := FuzzySearch(
+				t.Context(),
+				test.query,
+				dashboard.GetConfigWithContext(t.Context()).ServicesList,
+			)
 			for _, expectedKey := range test.expected {
 				found := false
 

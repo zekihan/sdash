@@ -12,7 +12,7 @@ import (
 )
 
 func GetDashboard(w http.ResponseWriter, r *http.Request) {
-	config := dashboard.GetConfig()
+	config := dashboard.GetConfigWithContext(r.Context())
 
 	err := views.Root(config).Render(r.Context(), w)
 	if errors.Is(err, context.Canceled) {

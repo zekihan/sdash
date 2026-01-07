@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"path"
 	"strconv"
@@ -14,7 +14,6 @@ import (
 
 	"github.com/gorilla/securecookie"
 	"github.com/sethvargo/go-envconfig"
-	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 
@@ -48,10 +47,9 @@ type WebConfig struct {
 }
 
 type LogConfig struct {
-	LevelStr      string       `yaml:"level"         env:"LEVEL"`
-	Path          string       `yaml:"path"          env:"PATH"`
-	Level         logrus.Level `yaml:"-"`
-	AddMethodName bool         `yaml:"addMethodName" env:"ADD_METHOD_NAME"`
+	LevelStr  string     `yaml:"level"     env:"LEVEL"`
+	Level     slog.Level `yaml:"-"`
+	AddSource bool       `yaml:"addSource" env:"ADD_SOURCE"`
 }
 
 type Dashboard struct {
@@ -74,11 +72,9 @@ type OidcConfig struct {
 	Default           bool   `yaml:"default"           env:"DEFAULT"`
 }
 
-func GetConfig() *Config {
+func GetConfigWithContext(ctx context.Context) *Config {
 	if config == nil {
-		cfg := GetConfigFromFile()
-
-		ctx := context.Background()
+		cfg := GetConfigFromFile(ctx)
 
 		err := envconfig.ProcessWith(ctx, &envconfig.Config{
 			Target:           cfg,
@@ -86,42 +82,58 @@ func GetConfig() *Config {
 			DefaultOverwrite: true,
 		})
 		if err != nil {
-			log.Fatalf("Failed to process env config: %v", err)
+			slog.ErrorContext(ctx, "Failed to process config from env", slog.Any("error", err))
+			os.Exit(1) //nolint:forbidigo // Using os.Exit in config initialization is acceptable.
 		}
 
 		if cfg.LogConfig.LevelStr != "" {
-			level, err := logrus.ParseLevel(cfg.LogConfig.LevelStr)
-			if err != nil {
-				log.Fatalf("Failed to parse log level: %v", err)
+			level := slog.LevelInfo
+
+			switch strings.ToLower(cfg.LogConfig.LevelStr) {
+			case "debug":
+				level = slog.LevelDebug
+			case "info":
+				level = slog.LevelInfo
+			case "warn", "warning":
+				level = slog.LevelWarn
+			case "error":
+				level = slog.LevelError
+			default:
+				slog.ErrorContext(
+					ctx,
+					"Invalid log level in config, defaulting to info",
+					slog.String("level", cfg.LogConfig.LevelStr),
+				)
 			}
 
 			cfg.LogConfig.Level = level
 		}
 
-		cfg.OidcConfig = processOidcConfigs(cfg.OidcConfig)
+		cfg.OidcConfig = processOidcConfigs(ctx, cfg.OidcConfig)
 		config = cfg
 	}
 
 	return config
 }
 
-func processOidcConfigs(oidcConfigs map[string]*OidcConfig) map[string]*OidcConfig {
+func processOidcConfigs(
+	ctx context.Context,
+	oidcConfigs map[string]*OidcConfig,
+) map[string]*OidcConfig {
 	newAuthConfig := make(map[string]*OidcConfig, len(oidcConfigs))
 	for key, val := range oidcConfigs {
 		envKey := fmt.Sprintf("%sOIDC_%s_", EnvKeyPrefix, strings.ToUpper(key))
-		val = getConfigFromEnv(val, envKey)
+		val = getConfigFromEnv(ctx, val, envKey)
 		newAuthConfig[key] = val
 	}
 
 	return newAuthConfig
 }
 
-func getConfigFromEnv[T any](config *T, envKey string) *T {
+func getConfigFromEnv[T any](ctx context.Context, config *T, envKey string) *T {
 	if config == nil {
 		return nil
 	}
-
-	ctx := context.Background()
 
 	err := envconfig.ProcessWith(ctx, &envconfig.Config{
 		Target:           config,
@@ -129,18 +141,29 @@ func getConfigFromEnv[T any](config *T, envKey string) *T {
 		DefaultOverwrite: true,
 	})
 	if err != nil {
-		log.Fatalf("Failed to process config from env: %v", err)
+		slog.ErrorContext(
+			ctx,
+			"Failed to process oidc config from env",
+			slog.String("envKey", envKey),
+			slog.Any("error", err),
+		)
+		os.Exit(1) //nolint:forbidigo // Using os.Exit in config initialization is acceptable.
 	}
 
 	return config
 }
 
-func GetConfigFromFile() *Config {
+func GetConfigFromFile(ctx context.Context) *Config {
 	newConfig := GetDefaultConfig()
 
-	file, err := os.Open(getConfigFilePath())
+	file, err := os.Open(getConfigFilePath(ctx))
 	if err != nil {
-		log.Fatalf("Failed to open config file: %v", err)
+		slog.ErrorContext(
+			ctx,
+			"Failed to open config file, using default config",
+			slog.Any("error", err),
+		)
+		os.Exit(1) //nolint:forbidigo // Using os.Exit in config initialization is acceptable.
 	}
 	defer func(file *os.File) {
 		fileErr := file.Close()
@@ -156,18 +179,29 @@ func GetConfigFromFile() *Config {
 			fmt.Printf("Failed to close config file after read error: %v", fileErr)
 		}
 
-		log.Fatalf("Failed to read config file: %v", err) //nolint:gocritic
+		slog.ErrorContext(
+			ctx,
+			"Failed to read config file, using default config",
+			slog.Any("error", fileErr),
+		)
+		//nolint:forbidigo,gocritic // Using os.Exit in config initialization is acceptable.
+		os.Exit(1)
 	}
 
 	err = yaml.Unmarshal(content, newConfig)
 	if err != nil {
-		log.Fatalf("Failed to parse config file: %v", err)
+		slog.ErrorContext(
+			ctx,
+			"Failed to unmarshal config file, using default config",
+			slog.Any("error", err),
+		)
+		os.Exit(1) //nolint:forbidigo // Using os.Exit in config initialization is acceptable.
 	}
 
 	return newConfig
 }
 
-func getConfigFilePath() string {
+func getConfigFilePath(ctx context.Context) string {
 	configPath := os.Getenv("CONFIG_PATH")
 	if configPath != "" {
 		return configPath
@@ -177,7 +211,12 @@ func getConfigFilePath() string {
 	if configDir == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
-			log.Fatalf("%v", err)
+			slog.ErrorContext(
+				ctx,
+				"Failed to get current working directory",
+				slog.Any("error", err),
+			)
+			os.Exit(1) //nolint:forbidigo // Using os.Exit in config initialization is acceptable.
 		}
 
 		configDir = cwd
@@ -198,8 +237,8 @@ func GetDefaultConfig() *Config {
 			SessionTimeout: defaultSessionTimeout,
 		},
 		LogConfig: LogConfig{
-			Level:         logrus.WarnLevel,
-			AddMethodName: false,
+			Level:     slog.LevelWarn,
+			AddSource: false,
 		},
 		Dashboard: Dashboard{
 			Reload: Reload{
@@ -222,7 +261,8 @@ func (c *WebConfig) GetHashKey() []byte {
 	} else {
 		hashKeyByte = securecookie.GenerateRandomKey(defaultCookieHashKeySize)
 		if hashKeyByte == nil {
-			log.Fatal("Failed to generate hash key")
+			slog.ErrorContext(context.Background(), "Failed to generate hash key")
+			os.Exit(1) //nolint:forbidigo // Using os.Exit in config initialization is acceptable.
 		}
 	}
 
@@ -238,7 +278,8 @@ func (c *WebConfig) GetBlockKey() []byte {
 	} else {
 		blockKeyByte = securecookie.GenerateRandomKey(defaultCookieBlockKeySize)
 		if blockKeyByte == nil {
-			log.Fatal("Failed to generate block key")
+			slog.ErrorContext(context.Background(), "Failed to generate block key")
+			os.Exit(1) //nolint:forbidigo // Using os.Exit in config initialization is acceptable.
 		}
 	}
 

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,7 +18,7 @@ func TestGetDefaultConfig(t *testing.T) {
 		t.Errorf("expected default BaseURL, got %s", cfg.WebConfig.BaseURL)
 	}
 
-	if cfg.LogConfig.Level != 3 { // logrus.WarnLevel == 3
+	if cfg.LogConfig.Level != slog.LevelWarn {
 		t.Errorf("expected default log level 3, got %d", cfg.LogConfig.Level)
 	}
 
@@ -68,7 +69,7 @@ func TestGetConfigFilePath_Default(t *testing.T) {
 
 	expected := filepath.Join(getCwd(t), "config.yaml")
 
-	got := getConfigFilePath()
+	got := getConfigFilePath(t.Context())
 	if got != expected {
 		t.Errorf("expected config path %s, got %s", expected, got)
 	}
@@ -77,7 +78,7 @@ func TestGetConfigFilePath_Default(t *testing.T) {
 func TestGetConfigFilePath_WithEnv(t *testing.T) {
 	t.Setenv("CONFIG_PATH", "/tmp/myconfig.yaml")
 
-	got := getConfigFilePath()
+	got := getConfigFilePath(t.Context())
 	if got != "/tmp/myconfig.yaml" {
 		t.Errorf("expected /tmp/myconfig.yaml, got %s", got)
 	}
@@ -113,7 +114,7 @@ dashboard:
 
 	t.Setenv("CONFIG_PATH", tmpFile.Name())
 
-	cfg := GetConfigFromFile()
+	cfg := GetConfigFromFile(t.Context())
 	if cfg.WebConfig.Port != 1234 {
 		t.Errorf("expected port 1234, got %d", cfg.WebConfig.Port)
 	}
@@ -166,12 +167,12 @@ dashboard:
 	// Reset package global config
 	config = nil
 
-	cfg := GetConfig()
+	cfg := GetConfigWithContext(t.Context())
 	if cfg.WebConfig.Port != 4321 {
 		t.Errorf("expected port 4321 from env, got %d", cfg.WebConfig.Port)
 	}
 
-	if cfg.LogConfig.Level != 2 { // logrus.ErrorLevel == 2
+	if cfg.LogConfig.Level != slog.LevelError {
 		t.Errorf("expected log level 2 (error), got %d", cfg.LogConfig.Level)
 	}
 }
@@ -183,7 +184,7 @@ func TestProcessOidcConfigs(t *testing.T) {
 		"test": {ClientID: "file-client"},
 	}
 
-	result := processOidcConfigs(oidc)
+	result := processOidcConfigs(t.Context(), oidc)
 	if result["test"].ClientID != "env-client" {
 		t.Errorf("expected env-client, got %s", result["test"].ClientID)
 	}
@@ -192,7 +193,7 @@ func TestProcessOidcConfigs(t *testing.T) {
 func TestGetConfigFromEnv_Nil(t *testing.T) {
 	var c *OidcConfig
 
-	got := getConfigFromEnv(c, "SDS__OIDC_TEST_")
+	got := getConfigFromEnv(t.Context(), c, "SDS__OIDC_TEST_")
 	if got != nil {
 		t.Errorf("expected nil, got %v", got)
 	}
