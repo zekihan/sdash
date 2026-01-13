@@ -21,7 +21,7 @@ func (cfg *Config) postProcessGroups() {
 		cfg.Groups["others"] = &Group{Title: "Others"}
 	}
 
-	groupList := make(GroupList, 0)
+	groupList := make(GroupList, 0, len(cfg.Groups))
 
 	for k, v := range cfg.Groups {
 		v.Key = k

@@ -33,7 +33,7 @@ func (cfg *Config) postProcessServices() {
 		cfg.Services = make(map[string]*Service)
 	}
 
-	serviceList := make(ServicesList, 0)
+	serviceList := make(ServicesList, 0, len(cfg.Services))
 
 	for key, value := range cfg.Services {
 		value.Key = key
