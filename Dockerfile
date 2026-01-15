@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM docker.io/node:24-alpine@sha256:6ad8c47f099bc2440e0fc42f17a03297fa79955f559f10087cabf377c43ddbce AS tailwind
+FROM --platform=$BUILDPLATFORM docker.io/node:24-alpine@sha256:931d7d57f8c1fd0e2179dbff7cc7da4c9dd100998bc2b32afc85142d8efbc213 AS tailwind
 WORKDIR /app
 
 RUN npm install -D tailwindcss @tailwindcss/cli @tailwindcss/postcss cssnano postcss postcss-cli
