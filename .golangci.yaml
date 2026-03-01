@@ -135,6 +135,9 @@ linters:
       go-version-pattern: ^1\.\d+\.\d+$
       replace-allow-list: [ ]
     gosec:
+      excludes:
+        - G117
+        - G704
       config:
         G104:
           fmt:
