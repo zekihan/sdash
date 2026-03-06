@@ -110,7 +110,12 @@ func TestAuthCallback(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create request
-			req := httptest.NewRequest(http.MethodGet, "/callback", http.NoBody)
+			req := httptest.NewRequestWithContext(
+				t.Context(),
+				http.MethodGet,
+				"/callback",
+				http.NoBody,
+			)
 			req.URL.RawQuery = tc.queryParams.Encode()
 			req.SetPathValue("oidc", tc.oidcKey)
 

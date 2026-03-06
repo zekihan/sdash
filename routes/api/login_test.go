@@ -32,7 +32,12 @@ func TestLogin(t *testing.T) {
 	}
 
 	t.Run("Valid OIDC Key", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/login/test", http.NoBody)
+		req := httptest.NewRequestWithContext(
+			t.Context(),
+			http.MethodGet,
+			"/login/test",
+			http.NoBody,
+		)
 		rec := httptest.NewRecorder()
 
 		req.SetPathValue("oidc", "test")
@@ -44,7 +49,12 @@ func TestLogin(t *testing.T) {
 	})
 
 	t.Run("Invalid OIDC Key", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/login/invalid", http.NoBody)
+		req := httptest.NewRequestWithContext(
+			t.Context(),
+			http.MethodGet,
+			"/login/invalid",
+			http.NoBody,
+		)
 		rec := httptest.NewRecorder()
 
 		req.SetPathValue("oidc", "invalid")
@@ -82,7 +92,7 @@ func TestLoginDefault(t *testing.T) {
 	}
 
 	t.Run("Redirect to Default OIDC", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/login", http.NoBody)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/login", http.NoBody)
 		rec := httptest.NewRecorder()
 
 		LoginDefault(rec, req)

@@ -8,7 +8,7 @@ import (
 
 func TestGetDashboard(t *testing.T) {
 	// Test case: Successful rendering
-	req := httptest.NewRequest(http.MethodGet, "/dashboard", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/dashboard", http.NoBody)
 	w := httptest.NewRecorder()
 	GetDashboard(w, req)
 

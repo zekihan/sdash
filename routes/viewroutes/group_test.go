@@ -8,7 +8,7 @@ import (
 
 func TestGetGroup(t *testing.T) {
 	// Test case: Successful rendering
-	req := httptest.NewRequest(http.MethodGet, "/group", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/group", http.NoBody)
 	req.SetPathValue("group", "infra")
 
 	w := httptest.NewRecorder()
@@ -20,7 +20,7 @@ func TestGetGroup(t *testing.T) {
 }
 
 func TestGetGroup_NotFound(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/group", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/group", http.NoBody)
 	req.SetPathValue("group", "nonexistent")
 
 	w := httptest.NewRecorder()

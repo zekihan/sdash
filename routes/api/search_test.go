@@ -7,7 +7,7 @@ import (
 )
 
 func TestGetSearch_NoQuery(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/api/search", http.NoBody)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/search", http.NoBody)
 	rr := httptest.NewRecorder()
 
 	GetSearch(rr, req)
@@ -22,7 +22,12 @@ func TestGetSearch_NoQuery(t *testing.T) {
 }
 
 func TestGetSearch_WithQuery(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/api/search?search=test", http.NoBody)
+	req := httptest.NewRequestWithContext(
+		t.Context(),
+		http.MethodGet,
+		"/api/search?search=test",
+		http.NoBody,
+	)
 	rr := httptest.NewRecorder()
 
 	GetSearch(rr, req)

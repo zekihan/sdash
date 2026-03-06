@@ -14,7 +14,7 @@ func TestProxy(t *testing.T) {
 	InitIconCache()
 
 	t.Run("missing url parameter", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/icon", http.NoBody)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/icon", http.NoBody)
 		w := httptest.NewRecorder()
 
 		Proxy(w, req)
@@ -35,7 +35,12 @@ func TestProxy(t *testing.T) {
 		)
 		defer mockServer.Close()
 
-		req := httptest.NewRequest(http.MethodGet, "/icon?url="+mockServer.URL, http.NoBody)
+		req := httptest.NewRequestWithContext(
+			t.Context(),
+			http.MethodGet,
+			"/icon?url="+mockServer.URL,
+			http.NoBody,
+		)
 		rr := httptest.NewRecorder()
 
 		Proxy(rr, req)
@@ -66,7 +71,12 @@ func TestProxy(t *testing.T) {
 			ContentType: "image/png",
 		})
 
-		req := httptest.NewRequest(http.MethodGet, "/icon?url="+testURL, http.NoBody)
+		req := httptest.NewRequestWithContext(
+			t.Context(),
+			http.MethodGet,
+			"/icon?url="+testURL,
+			http.NoBody,
+		)
 		rr := httptest.NewRecorder()
 
 		Proxy(rr, req)
@@ -81,7 +91,12 @@ func TestProxy(t *testing.T) {
 	})
 
 	t.Run("invalid url", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/icon?url=invalid-url", http.NoBody)
+		req := httptest.NewRequestWithContext(
+			t.Context(),
+			http.MethodGet,
+			"/icon?url=invalid-url",
+			http.NoBody,
+		)
 		w := httptest.NewRecorder()
 
 		Proxy(w, req)
