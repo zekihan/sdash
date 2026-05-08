@@ -41,6 +41,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	cookie.SetCookie(w, r, "state", state)
 
 	authURL := oidcSource.Config.AuthCodeURL(state)
+	//nolint:gosec // oauth flow
 	http.Redirect(w, r, authURL, http.StatusSeeOther)
 }
 
@@ -55,5 +56,6 @@ func LoginDefault(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url := fmt.Sprintf("/login/%s?redirect=%s", oidcSource.Key, redirected)
+	//nolint:gosec // oauth flow
 	http.Redirect(w, r, url, http.StatusSeeOther)
 }
