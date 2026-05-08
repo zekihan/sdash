@@ -10,7 +10,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/justinas/alice v1.2.0
 	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25
-	github.com/sahilm/fuzzy v0.1.1
+	github.com/sahilm/fuzzy v0.1.2
 	github.com/sethvargo/go-envconfig v1.3.0
 	github.com/zekihan/go-commons v1.0.4
 	golang.org/x/oauth2 v0.36.0
@@ -24,7 +24,6 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
-	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lmittmann/tint v1.1.2 // indirect
 	github.com/tdewolff/minify/v2 v2.24.8 // indirect
 	github.com/tdewolff/parse/v2 v2.8.5 // indirect
