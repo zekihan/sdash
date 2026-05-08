@@ -114,7 +114,7 @@ func main() {
 		fmt.Sprintf("Listening on %s:%d", host, port),
 		slog.String("host", host),
 		slog.Int("port", port),
-		slog.String("base_url", cfg.WebConfig.BaseURL),
+		slog.String("baseUrl", cfg.WebConfig.BaseURL),
 	)
 
 	srv := &http.Server{

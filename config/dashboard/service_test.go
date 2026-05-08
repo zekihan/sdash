@@ -44,11 +44,11 @@ func TestConfig_postProcessServices(t *testing.T) {
 		t.Error("Tags should not be nil")
 	}
 	// Check that default group is set
-	if cfg.Services["svc1"].Group != "others" {
+	if cfg.Services["svc1"].Group != DefaultGroup {
 		t.Errorf("Default group not set, got %v", cfg.Services["svc1"].Group)
 	}
 	// Check that group is created for default
-	if _, ok := cfg.Groups["others"]; !ok {
+	if _, ok := cfg.Groups[DefaultGroup]; !ok {
 		t.Error("Default group 'others' not created")
 	}
 	// Check that HasAny is set

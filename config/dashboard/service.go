@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+const DefaultGroup = "others"
+
 type Service struct {
 	Key       string   `yaml:"-"`
 	Title     string   `yaml:"title"`
@@ -42,7 +44,7 @@ func (cfg *Config) postProcessServices() {
 		}
 
 		if value.Group == "" {
-			value.Group = "others"
+			value.Group = DefaultGroup
 		}
 
 		if _, ok := cfg.Groups[value.Group]; ok {

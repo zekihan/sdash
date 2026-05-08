@@ -47,7 +47,7 @@ func TestPostProcessGroups(t *testing.T) {
 			t.Fatalf("expected 1 group, got %d", len(cfg.GroupList))
 		}
 
-		if cfg.GroupList[0].Key != "others" {
+		if cfg.GroupList[0].Key != DefaultGroup {
 			t.Errorf("expected key 'others', got %q", cfg.GroupList[0].Key)
 		}
 	})
@@ -62,7 +62,7 @@ func TestPostProcessGroups(t *testing.T) {
 		}
 		cfg.postProcessGroups()
 
-		want := []string{"a", "b", "others"}
+		want := []string{"a", "b", DefaultGroup}
 		if len(cfg.GroupList) != len(want) {
 			t.Fatalf("expected %d groups, got %d", len(want), len(cfg.GroupList))
 		}
