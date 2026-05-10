@@ -6,8 +6,8 @@ DIR=$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)
 
 cd "${DIR}/.."
 
-TEMPL_VERSION="v0.3.1001"
-TAILWINDCSS_VERSION="v4.1.11"
+TEMPL_VERSION="v0.3.1020"
+TAILWINDCSS_VERSION="v4.3.0"
 
 arch=$(uname -m)
 if [ "${arch}" = "x86_64" ]; then
@@ -66,4 +66,4 @@ install_templ
 install_tailwindcss
 
 echo "Installed templ version: $(templ version)"
-echo "Installed tailwindcss version: $(tailwindcss version)"
+echo "Installed tailwindcss version: $(tailwindcss -h)"
