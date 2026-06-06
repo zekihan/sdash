@@ -12,7 +12,7 @@ require (
 	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25
 	github.com/sahilm/fuzzy v0.1.2
 	github.com/sethvargo/go-envconfig v1.3.0
-	github.com/zekihan/go-commons v1.0.4
+	github.com/zekihan/go-commons v1.0.6
 	golang.org/x/oauth2 v0.36.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -26,9 +26,9 @@ require (
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/lmittmann/tint v1.1.3 // indirect
 	github.com/tdewolff/minify/v2 v2.24.13 // indirect
-	github.com/tdewolff/parse/v2 v2.8.12 // indirect
-	golang.org/x/crypto v0.51.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
+	github.com/tdewolff/parse/v2 v2.8.13 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 )
 
 //replace github.com/zekihan/go-commons => ../go-commons

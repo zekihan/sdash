@@ -33,12 +33,24 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	redirected := r.URL.Query().Get("redirect")
 
 	state, err := utils.RandString(defaultStateLength)
-	if web.CheckError(w, err, http.StatusInternalServerError, "Failed to generate state") {
+	if web.CheckError(
+		r.Context(),
+		w,
+		err,
+		http.StatusInternalServerError,
+		"Failed to generate state",
+	) {
 		return
 	}
 
 	state = fmt.Sprintf("%s$$$%s", state, redirected)
-	cookie.SetCookie(w, r, "state", state)
+
+	err = cookie.SetCookie(w, r, "state", state)
+	if err != nil {
+		http.Error(w, "failed to set state cookie", http.StatusInternalServerError)
+
+		return
+	}
 
 	authURL := oidcSource.Config.AuthCodeURL(state)
 	//nolint:gosec // oauth flow

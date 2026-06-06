@@ -43,5 +43,11 @@ func GetGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	web.CheckError(w, err, http.StatusInternalServerError, "failed to render dashboard")
+	web.CheckError(
+		r.Context(),
+		w,
+		err,
+		http.StatusInternalServerError,
+		"failed to render dashboard",
+	)
 }

@@ -30,7 +30,7 @@ func TestProxy(t *testing.T) {
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "image/png")
 				w.WriteHeader(http.StatusOK)
-				web.WriteString(w, "fake-icon-data")
+				web.WriteString(r.Context(), w, "fake-icon-data")
 			}),
 		)
 		defer mockServer.Close()

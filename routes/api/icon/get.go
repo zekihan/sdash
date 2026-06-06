@@ -21,7 +21,13 @@ const (
 func Proxy(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
 	if url == "" {
-		web.CheckError(w, errMissingURL, http.StatusBadRequest, "missing url parameter")
+		web.CheckError(
+			r.Context(),
+			w,
+			errMissingURL,
+			http.StatusBadRequest,
+			"missing url parameter",
+		)
 
 		return
 	}
@@ -30,7 +36,7 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 
 	if icon, ok := cache.get(url); ok {
 		w.Header().Set("Content-Type", icon.ContentType)
-		web.Write(w, icon.Data)
+		web.Write(r.Context(), w, icon.Data)
 
 		return
 	}
@@ -38,19 +44,25 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 	client := getHTTPClient()
 
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, url, http.NoBody)
-	if web.CheckError(w, err, http.StatusInternalServerError, "failed to create request") {
+	if web.CheckError(
+		r.Context(),
+		w,
+		err,
+		http.StatusInternalServerError,
+		"failed to create request",
+	) {
 		return
 	}
 
 	response, err := client.Do(req)
-	if web.CheckError(w, err, http.StatusInternalServerError, "failed to fetch icon") {
+	if web.CheckError(r.Context(), w, err, http.StatusInternalServerError, "failed to fetch icon") {
 		return
 	}
 
 	defer response.Body.Close()
 
 	body, err := io.ReadAll(response.Body)
-	if web.CheckError(w, err, http.StatusInternalServerError, "failed to read icon") {
+	if web.CheckError(r.Context(), w, err, http.StatusInternalServerError, "failed to read icon") {
 		return
 	}
 
@@ -59,7 +71,7 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(response.StatusCode)
 
-	if web.Write(w, body) {
+	if web.Write(r.Context(), w, body) {
 		return
 	}
 

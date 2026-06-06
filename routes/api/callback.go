@@ -63,7 +63,13 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	oauth2Token, err := oidcSource.Config.Exchange(ctx, r.URL.Query().Get("code"))
-	if web.CheckError(w, err, http.StatusInternalServerError, "Failed to exchange token") {
+	if web.CheckError(
+		r.Context(),
+		w,
+		err,
+		http.StatusInternalServerError,
+		"Failed to exchange token",
+	) {
 		return
 	}
 
@@ -75,22 +81,40 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	idToken, err := oidcSource.Verify(ctx, rawIDToken)
-	if web.CheckError(w, err, http.StatusInternalServerError, "Failed to verify ID token") {
+	if web.CheckError(
+		r.Context(),
+		w,
+		err,
+		http.StatusInternalServerError,
+		"Failed to verify ID token",
+	) {
 		return
 	}
 
 	var profile map[string]any
 
 	err = idToken.Claims(&profile)
-	if web.CheckError(w, err, http.StatusInternalServerError, "Failed to get claims") {
+	if web.CheckError(r.Context(), w, err, http.StatusInternalServerError, "Failed to get claims") {
 		return
 	}
 
 	sess := session.NewCookie()
+	if sess == nil {
+		http.Error(w, "failed to create session", http.StatusInternalServerError)
+
+		return
+	}
+
 	sess.Authenticated = true
 
 	cookieName := config.GetConfigWithContext(r.Context()).WebConfig.AuthCookie
-	cookie.SetCookie(w, r, cookieName, sess)
+
+	err = cookie.SetCookie(w, r, cookieName, sess)
+	if err != nil {
+		http.Error(w, "failed to set cookie", http.StatusInternalServerError)
+
+		return
+	}
 
 	http.Redirect(w, r, redirected, http.StatusSeeOther)
 }
