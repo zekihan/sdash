@@ -66,6 +66,10 @@ func getSearchable(ctx context.Context, list dashboard.ServicesList) [][]string 
 }
 
 func getSearchableFromGroup(field dashboard.Field, group *dashboard.Group) string {
+	if group == nil {
+		return ""
+	}
+
 	switch field {
 	case dashboard.FieldKey:
 		return group.Key

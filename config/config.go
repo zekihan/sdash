@@ -182,7 +182,7 @@ func GetConfigFromFile(ctx context.Context) *Config {
 		slog.ErrorContext(
 			ctx,
 			"Failed to read config file, using default config",
-			slog.Any("error", fileErr),
+			slog.Any("error", err),
 		)
 		//nolint:forbidigo,gocritic // Using os.Exit in config initialization is acceptable.
 		os.Exit(1)

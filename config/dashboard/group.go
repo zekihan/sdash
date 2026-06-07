@@ -34,14 +34,14 @@ func (cfg *Config) postProcessGroups() {
 
 func (groupList *GroupList) Sort(ordering Ordering) {
 	if ordering != OrderingNone {
-		slices.SortStableFunc(*groupList, func(fistItem, secondItem *Group) int {
+		slices.SortStableFunc(*groupList, func(firstItem, secondItem *Group) int {
 			switch ordering {
 			case OrderingTitle:
-				return strings.Compare(fistItem.Title, secondItem.Title)
+				return strings.Compare(firstItem.Title, secondItem.Title)
 			case OrderingKey:
-				return strings.Compare(fistItem.Key, secondItem.Key)
+				return strings.Compare(firstItem.Key, secondItem.Key)
 			case OrderingOrder:
-				return fistItem.Order - secondItem.Order
+				return firstItem.Order - secondItem.Order
 			case OrderingNone:
 				return 0
 			default:

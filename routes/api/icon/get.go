@@ -4,12 +4,15 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/zekihan/go-commons/web"
 )
 
 var errMissingURL = errors.New("missing url parameter")
+
+var errInvalidURLScheme = errors.New("invalid url scheme")
 
 const (
 	defaultTimeout             = 5 * time.Second
@@ -19,8 +22,8 @@ const (
 )
 
 func Proxy(w http.ResponseWriter, r *http.Request) {
-	url := r.URL.Query().Get("url")
-	if url == "" {
+	rawURL := r.URL.Query().Get("url")
+	if rawURL == "" {
 		web.CheckError(
 			r.Context(),
 			w,
@@ -32,9 +35,22 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+		web.CheckError(
+			r.Context(),
+			w,
+			errInvalidURLScheme,
+			http.StatusBadRequest,
+			"invalid url",
+		)
+
+		return
+	}
+
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 
-	if icon, ok := cache.get(url); ok {
+	if icon, ok := cache.get(rawURL); ok {
 		w.Header().Set("Content-Type", icon.ContentType)
 		web.Write(r.Context(), w, icon.Data)
 
@@ -43,7 +59,7 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 
 	client := getHTTPClient()
 
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, url, http.NoBody)
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, rawURL, http.NoBody)
 	if web.CheckError(
 		r.Context(),
 		w,
@@ -75,8 +91,8 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cache.add(url, &Icon{
-		URL:         url,
+	cache.add(rawURL, &Icon{
+		URL:         rawURL,
 		Data:        body,
 		ContentType: contentType,
 	})

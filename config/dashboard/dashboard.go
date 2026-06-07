@@ -158,12 +158,12 @@ func watchConfigFileViaModTime(ctx context.Context) {
 
 		fileInfo, err := os.Stat(configPath)
 		if err != nil || fileInfo.IsDir() {
-			return
+			continue
 		}
 
 		currMod := fileInfo.ModTime()
 		if currMod.IsZero() {
-			return
+			continue
 		}
 
 		if lastMod.Unix() < currMod.Unix() {

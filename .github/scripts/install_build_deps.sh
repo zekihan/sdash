@@ -41,7 +41,7 @@ install_tailwindcss() {
 	if [ "${FORCE}" -eq 1 ] || ! command -v tailwindcss >/dev/null 2>&1; then
 		echo "Installing tailwindcss with version ${TAILWINDCSS_VERSION}"
 		tailwindcss_url="https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWINDCSS_VERSION}/tailwindcss-${tailwindcss_os}-${tailwindcss_arch}"
-		curl -sLO "${tailwindcss_url}"
+		curl -fsSLO "${tailwindcss_url}"
 		chmod +x "tailwindcss-${tailwindcss_os}-${tailwindcss_arch}"
 		sudo mv "tailwindcss-${tailwindcss_os}-${tailwindcss_arch}" /usr/local/bin/tailwindcss
 	fi
