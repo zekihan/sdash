@@ -10,7 +10,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/justinas/alice v1.2.0
 	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25
-	github.com/sahilm/fuzzy v0.1.2
+	github.com/sahilm/fuzzy v0.1.3
 	github.com/sethvargo/go-envconfig v1.3.0
 	github.com/zekihan/go-commons v1.0.6
 	golang.org/x/oauth2 v0.36.0
