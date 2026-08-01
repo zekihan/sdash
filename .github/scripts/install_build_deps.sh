@@ -7,12 +7,14 @@ DIR=$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)
 cd "${DIR}/.."
 
 TEMPL_VERSION="v0.3.1020"
-TAILWINDCSS_VERSION="v4.3.0"
+TAILWINDCSS_VERSION="v4.3.3"
 
 arch=$(uname -m)
 if [ "${arch}" = "x86_64" ]; then
 	tailwindcss_arch="x64"
 elif [ "${arch}" = "aarch64" ]; then
+	tailwindcss_arch=arm64
+elif [ "${arch}" = "arm64" ]; then
 	tailwindcss_arch=arm64
 else
 	echo "Unsupported architecture: ${arch}"
