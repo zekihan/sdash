@@ -4,9 +4,9 @@ import "testing"
 
 func TestGroupListSort(t *testing.T) {
 	base := GroupList{
-		&Group{Key: "b", Title: "B", Order: 2},
-		&Group{Key: "a", Title: "A", Order: 1},
-		&Group{Key: "c", Title: "C", Order: 3},
+		testGroup("b", "B", 2),
+		testGroup("a", "A", 1),
+		testGroup("c", "C", 3),
 	}
 
 	cases := []struct {
@@ -40,7 +40,7 @@ func TestGroupListSort(t *testing.T) {
 
 func TestPostProcessGroups(t *testing.T) {
 	t.Run("nil groups yields only others", func(t *testing.T) {
-		cfg := &Config{}
+		cfg := new(Config)
 		cfg.postProcessGroups()
 
 		if len(cfg.GroupList) != 1 {
@@ -53,13 +53,12 @@ func TestPostProcessGroups(t *testing.T) {
 	})
 
 	t.Run("prepopulated sort by key + others appended", func(t *testing.T) {
-		cfg := &Config{
-			Groups: map[string]*Group{
-				"b": {Title: "TitleB", Order: 2},
-				"a": {Title: "TitleA", Order: 1},
-			},
-			OrderGroupsVia: OrderingKey,
+		cfg := new(Config)
+		cfg.Groups = map[string]*Group{
+			"b": testGroup("", "TitleB", 2),
+			"a": testGroup("", "TitleA", 1),
 		}
+		cfg.OrderGroupsVia = OrderingKey
 		cfg.postProcessGroups()
 
 		want := []string{"a", "b", DefaultGroup}
@@ -73,4 +72,13 @@ func TestPostProcessGroups(t *testing.T) {
 			}
 		}
 	})
+}
+
+func testGroup(key, title string, order int) *Group {
+	group := new(Group)
+	group.Key = key
+	group.Title = title
+	group.Order = order
+
+	return group
 }

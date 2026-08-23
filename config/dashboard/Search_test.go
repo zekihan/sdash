@@ -13,56 +13,33 @@ func TestPostProcessSearchConfig(t *testing.T) {
 	}{
 		{
 			name:  "nil SearchConfig",
-			input: &Config{},
-			expected: &SearchConfig{
-				From: &SearchFromConfig{
-					Service: []Field{FieldTitle},
-					Group:   []Field{FieldTitle},
-				},
-			},
+			input: testConfig(nil),
+			expected: testSearchConfig(
+				testSearchFromConfig([]Field{FieldTitle}, []Field{FieldTitle}),
+			),
 		},
 		{
-			name: "nil From",
-			input: &Config{
-				SearchConfig: &SearchConfig{},
-			},
-			expected: &SearchConfig{
-				From: &SearchFromConfig{
-					Service: []Field{FieldTitle},
-					Group:   []Field{FieldTitle},
-				},
-			},
+			name:  "nil From",
+			input: testConfig(testSearchConfig(nil)),
+			expected: testSearchConfig(
+				testSearchFromConfig([]Field{FieldTitle}, []Field{FieldTitle}),
+			),
 		},
 		{
-			name: "nil Service and Group",
-			input: &Config{
-				SearchConfig: &SearchConfig{
-					From: &SearchFromConfig{},
-				},
-			},
-			expected: &SearchConfig{
-				From: &SearchFromConfig{
-					Service: []Field{FieldTitle},
-					Group:   []Field{FieldTitle},
-				},
-			},
+			name:  "nil Service and Group",
+			input: testConfig(testSearchConfig(testSearchFromConfig(nil, nil))),
+			expected: testSearchConfig(
+				testSearchFromConfig([]Field{FieldTitle}, []Field{FieldTitle}),
+			),
 		},
 		{
 			name: "Service and Group already set",
-			input: &Config{
-				SearchConfig: &SearchConfig{
-					From: &SearchFromConfig{
-						Service: []Field{FieldKey, FieldTitle},
-						Group:   []Field{FieldCluster},
-					},
-				},
-			},
-			expected: &SearchConfig{
-				From: &SearchFromConfig{
-					Service: []Field{FieldKey, FieldTitle},
-					Group:   []Field{FieldCluster},
-				},
-			},
+			input: testConfig(testSearchConfig(testSearchFromConfig(
+				[]Field{FieldKey, FieldTitle}, []Field{FieldCluster},
+			))),
+			expected: testSearchConfig(testSearchFromConfig(
+				[]Field{FieldKey, FieldTitle}, []Field{FieldCluster},
+			)),
 		},
 	}
 
@@ -95,4 +72,26 @@ func TestPostProcessSearchConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func testConfig(searchConfig *SearchConfig) *Config {
+	cfg := new(Config)
+	cfg.SearchConfig = searchConfig
+
+	return cfg
+}
+
+func testSearchConfig(from *SearchFromConfig) *SearchConfig {
+	cfg := new(SearchConfig)
+	cfg.From = from
+
+	return cfg
+}
+
+func testSearchFromConfig(service, group []Field) *SearchFromConfig {
+	cfg := new(SearchFromConfig)
+	cfg.Service = service
+	cfg.Group = group
+
+	return cfg
 }

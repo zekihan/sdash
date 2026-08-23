@@ -52,10 +52,10 @@ func init() {
 	cfg = config.GetConfigWithContext(context.Background())
 
 	// Init logger.
-	utils.InitLogger(&utils.LoggerConfig{
-		Level:     cfg.LogConfig.Level,
-		AddSource: cfg.LogConfig.AddSource,
-	})
+	loggerConfig := new(utils.LoggerConfig)
+	loggerConfig.Level = cfg.LogConfig.Level
+	loggerConfig.AddSource = cfg.LogConfig.AddSource
+	utils.InitLogger(loggerConfig)
 
 	cookie.InitSecureCookie(cfg.WebConfig.GetHashKey(), cfg.WebConfig.GetBlockKey())
 
@@ -117,12 +117,11 @@ func main() {
 		slog.String("baseUrl", cfg.WebConfig.BaseURL),
 	)
 
-	srv := &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", host, port),
-		Handler:      stdChain.Then(http.DefaultServeMux),
-		ReadTimeout:  defaultTimeout,
-		WriteTimeout: defaultTimeout,
-	}
+	srv := new(http.Server)
+	srv.Addr = fmt.Sprintf("%s:%d", host, port)
+	srv.Handler = stdChain.Then(http.DefaultServeMux)
+	srv.ReadTimeout = defaultTimeout
+	srv.WriteTimeout = defaultTimeout
 
 	err := srv.ListenAndServe()
 	if err != nil {

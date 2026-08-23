@@ -21,6 +21,7 @@ func TestRoot(t *testing.T) {
 			acceptType:     "text/html",
 			expectedStatus: http.StatusMovedPermanently,
 			expectedHeader: "/dashboard",
+			expectedBody:   "",
 		},
 		{
 			name:           "Non-root path with HTML accept type redirects to /404",
@@ -28,6 +29,7 @@ func TestRoot(t *testing.T) {
 			acceptType:     "text/html",
 			expectedStatus: http.StatusMovedPermanently,
 			expectedHeader: "/404",
+			expectedBody:   "",
 		},
 	}
 

@@ -20,9 +20,8 @@ type iconCache struct {
 }
 
 func InitIconCache() {
-	cache = &iconCache{
-		cache: expirable.NewLRU[string, Icon](defaultIconCacheSize, nil, defaultIconCacheTTL),
-	}
+	cache = new(iconCache)
+	cache.cache = expirable.NewLRU[string, Icon](defaultIconCacheSize, nil, defaultIconCacheTTL)
 }
 
 func (c *iconCache) get(key string) (*Icon, bool) {

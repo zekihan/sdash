@@ -30,7 +30,8 @@ func TestGetDefaultOidcSource(t *testing.T) {
 		t.Errorf("Expected error when DefaultOidcSource is nil")
 	}
 
-	DefaultOidcSource = &OidcSource{Key: "test"}
+	DefaultOidcSource = new(OidcSource)
+	DefaultOidcSource.Key = "test"
 
 	source, err := GetDefaultOidcSource()
 	if err != nil {
@@ -55,20 +56,15 @@ func TestInit(t *testing.T) {
 		}
 	})
 
-	cfg := &config.Config{
-		OidcConfig: map[string]*config.OidcConfig{
-			"test": {
-				Enabled:           true,
-				Default:           true,
-				ClientID:          mockOidcServer.ClientID,
-				ClientSecret:      mockOidcServer.ClientSecret,
-				DiscoveryEndpoint: mockOidcServer.Issuer(),
-			},
-		},
-		WebConfig: config.WebConfig{
-			BaseURL: "http://localhost:8080",
-		},
-	}
+	cfg := new(config.Config)
+	oidcConfig := new(config.OidcConfig)
+	oidcConfig.Enabled = true
+	oidcConfig.Default = true
+	oidcConfig.ClientID = mockOidcServer.ClientID
+	oidcConfig.ClientSecret = mockOidcServer.ClientSecret
+	oidcConfig.DiscoveryEndpoint = mockOidcServer.Issuer()
+	cfg.OidcConfig = map[string]*config.OidcConfig{"test": oidcConfig}
+	cfg.WebConfig.BaseURL = "http://localhost:8080"
 
 	Init(cfg)
 

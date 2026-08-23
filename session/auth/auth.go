@@ -28,9 +28,8 @@ type OidcSource struct {
 }
 
 func (o *OidcSource) Verify(ctx context.Context, rawIDToken string) (*oidc.IDToken, error) {
-	oidcConfig := &oidc.Config{
-		ClientID: o.SelfConfig.ClientID,
-	}
+	oidcConfig := new(oidc.Config)
+	oidcConfig.ClientID = o.SelfConfig.ClientID
 	verifier := o.Provider.Verifier(oidcConfig)
 
 	token, err := verifier.Verify(ctx, rawIDToken)

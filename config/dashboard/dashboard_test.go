@@ -100,7 +100,7 @@ services:
 
 func TestGetCurrentConfig_ThreadSafe(t *testing.T) {
 	// Just ensure it returns the global config pointer
-	config = &Config{}
+	config = new(Config)
 
 	got := getCurrentConfig(t.Context())
 	if got != config {
@@ -109,7 +109,7 @@ func TestGetCurrentConfig_ThreadSafe(t *testing.T) {
 }
 
 func TestPostProcessConfig_CallsAll(t *testing.T) {
-	c := &Config{}
+	c := new(Config)
 	c.postProcessConfig()
 	// No panic = success, as postProcess* are not implemented here
 }

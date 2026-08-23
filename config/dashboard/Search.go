@@ -22,11 +22,11 @@ type SearchConfig struct {
 
 func (cfg *Config) postProcessSearchConfig() {
 	if cfg.SearchConfig == nil {
-		cfg.SearchConfig = &SearchConfig{}
+		cfg.SearchConfig = new(SearchConfig)
 	}
 
 	if cfg.SearchConfig.From == nil {
-		cfg.SearchConfig.From = &SearchFromConfig{}
+		cfg.SearchConfig.From = new(SearchFromConfig)
 	}
 
 	if cfg.SearchConfig.From.Service == nil {

@@ -5,10 +5,10 @@ import (
 )
 
 func TestService_GetIconURL(t *testing.T) {
-	service := &Service{
-		Icon:      "https://example.com/icon.png",
-		ProxyIcon: false,
-	}
+	service := new(Service)
+	service.Icon = "https://example.com/icon.png"
+	service.ProxyIcon = false
+
 	if got := service.GetIconURL(); got != "https://example.com/icon.png" {
 		t.Errorf("GetIconURL() = %v, want %v", got, service.Icon)
 	}
@@ -22,16 +22,15 @@ func TestService_GetIconURL(t *testing.T) {
 }
 
 func TestConfig_postProcessServices(t *testing.T) {
-	cfg := &Config{
-		Services: map[string]*Service{
-			"svc1": {Title: "A", Group: "", Tags: nil, Order: 2},
-			"svc2": {Title: "B", Group: "custom", Tags: []string{"tag"}, Order: 1},
-		},
-		Groups: map[string]*Group{
-			"custom": {Key: "custom", Title: "Custom", Order: 1},
-		},
-		OrderServicesVia: OrderingOrder,
+	cfg := new(Config)
+	cfg.Services = map[string]*Service{
+		"svc1": testService("", "A", "", nil, 2),
+		"svc2": testService("", "B", "custom", []string{"tag"}, 1),
 	}
+	cfg.Groups = map[string]*Group{
+		"custom": testGroup("custom", "Custom", 1),
+	}
+	cfg.OrderServicesVia = OrderingOrder
 
 	cfg.postProcessServices()
 
@@ -66,8 +65,8 @@ func TestConfig_postProcessServices(t *testing.T) {
 }
 
 func TestServicesList_Sort(t *testing.T) {
-	service1 := &Service{Title: "B", Key: "b", Order: 2}
-	service2 := &Service{Title: "A", Key: "a", Order: 1}
+	service1 := testService("b", "B", "", nil, 2)
+	service2 := testService("a", "A", "", nil, 1)
 	list := ServicesList{service1, service2}
 
 	list.Sort(OrderingTitle)
@@ -96,4 +95,15 @@ func TestServicesList_Sort(t *testing.T) {
 	if list[0] != service1 {
 		t.Errorf("Sort with OrderingNone should not sort: %+v", list)
 	}
+}
+
+func testService(key, title, group string, tags []string, order int) *Service {
+	service := new(Service)
+	service.Key = key
+	service.Title = title
+	service.Group = group
+	service.Tags = tags
+	service.Order = order
+
+	return service
 }

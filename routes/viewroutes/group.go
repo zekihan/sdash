@@ -36,7 +36,8 @@ func GetGroup(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	filteredDashboard := &dashboard.Config{ServicesList: results}
+	filteredDashboard := new(dashboard.Config)
+	filteredDashboard.ServicesList = results
 
 	err := views.Group(filteredDashboard, val).Render(r.Context(), w)
 	if errors.Is(err, context.Canceled) {

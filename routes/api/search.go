@@ -35,7 +35,9 @@ func GetSearch(w http.ResponseWriter, r *http.Request) {
 		groups.Sort(config.OrderGroupsVia)
 	}
 
-	filteredDashboard := &dashboard.Config{ServicesList: result, GroupList: groups}
+	filteredDashboard := new(dashboard.Config)
+	filteredDashboard.ServicesList = result
+	filteredDashboard.GroupList = groups
 
 	err := views.CardLists(filteredDashboard).Render(r.Context(), w)
 	if errors.Is(err, context.Canceled) {

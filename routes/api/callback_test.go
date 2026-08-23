@@ -42,17 +42,15 @@ func TestAuthCallback(t *testing.T) {
 	}
 
 	// Mock dependencies
-	auth.OidcSourceMap = map[string]*auth.OidcSource{
-		"test": {
-			Key: "test",
-			SelfConfig: &config.OidcConfig{
-				ClientID:     mockOidcServer.ClientID,
-				ClientSecret: mockOidcServer.ClientSecret,
-			},
-			Config:   oauth2Config,
-			Provider: provider,
-		},
-	}
+	oidcConfig := new(config.OidcConfig)
+	oidcConfig.ClientID = mockOidcServer.ClientID
+	oidcConfig.ClientSecret = mockOidcServer.ClientSecret
+	oidcSource := new(auth.OidcSource)
+	oidcSource.Key = "test"
+	oidcSource.SelfConfig = oidcConfig
+	oidcSource.Config = oauth2Config
+	oidcSource.Provider = provider
+	auth.OidcSourceMap = map[string]*auth.OidcSource{"test": oidcSource}
 
 	// Test cases
 	tests := []struct {
@@ -65,16 +63,22 @@ func TestAuthCallback(t *testing.T) {
 		{
 			name:           "Missing OIDC key",
 			oidcKey:        "",
+			queryParams:    nil,
+			stateCookie:    "",
 			expectedStatus: http.StatusNotFound,
 		},
 		{
 			name:           "Invalid OIDC key",
 			oidcKey:        "invalid",
+			queryParams:    nil,
+			stateCookie:    "",
 			expectedStatus: http.StatusNotFound,
 		},
 		{
 			name:           "Missing state cookie",
 			oidcKey:        "test",
+			queryParams:    nil,
+			stateCookie:    "",
 			expectedStatus: http.StatusBadRequest,
 		},
 		{

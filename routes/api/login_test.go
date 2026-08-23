@@ -13,12 +13,7 @@ import (
 
 func TestLogin(t *testing.T) {
 	// Mock OIDC source
-	auth.OidcSourceMap = map[string]*auth.OidcSource{
-		"test": {
-			Key:    "test",
-			Config: &oauth2.Config{},
-		},
-	}
+	auth.OidcSourceMap = map[string]*auth.OidcSource{"test": testOidcSource("test")}
 
 	cfg := config.GetConfigWithContext(t.Context())
 	cfg.OidcConfig = map[string]*config.OidcConfig{
@@ -68,12 +63,7 @@ func TestLogin(t *testing.T) {
 
 func TestLoginDefault(t *testing.T) {
 	// Mock OIDC source
-	auth.OidcSourceMap = map[string]*auth.OidcSource{
-		"test": {
-			Key:    "test",
-			Config: &oauth2.Config{},
-		},
-	}
+	auth.OidcSourceMap = map[string]*auth.OidcSource{"test": testOidcSource("test")}
 
 	cfg := config.GetConfigWithContext(t.Context())
 	cfg.OidcConfig = map[string]*config.OidcConfig{
@@ -86,10 +76,7 @@ func TestLoginDefault(t *testing.T) {
 		},
 	}
 
-	auth.DefaultOidcSource = &auth.OidcSource{
-		Key:    "test",
-		Config: &oauth2.Config{},
-	}
+	auth.DefaultOidcSource = testOidcSource("test")
 
 	t.Run("Redirect to Default OIDC", func(t *testing.T) {
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/login", http.NoBody)
@@ -101,4 +88,12 @@ func TestLoginDefault(t *testing.T) {
 			t.Errorf("expected status %d, got %d", http.StatusSeeOther, rec.Code)
 		}
 	})
+}
+
+func testOidcSource(key string) *auth.OidcSource {
+	source := new(auth.OidcSource)
+	source.Key = key
+	source.Config = new(oauth2.Config)
+
+	return source
 }

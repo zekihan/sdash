@@ -28,7 +28,7 @@ func TestGetDefaultConfig(t *testing.T) {
 }
 
 func TestWebConfig_GetHashKey_GeneratesKey(t *testing.T) {
-	wc := WebConfig{}
+	wc := new(WebConfig)
 
 	key := wc.GetHashKey()
 	if len(key) != 64 {
@@ -37,7 +37,8 @@ func TestWebConfig_GetHashKey_GeneratesKey(t *testing.T) {
 }
 
 func TestWebConfig_GetHashKey_UsesProvidedKey(t *testing.T) {
-	wc := WebConfig{CookieHashKey: "myhashkey"}
+	wc := new(WebConfig)
+	wc.CookieHashKey = "myhashkey"
 
 	key := wc.GetHashKey()
 	if string(key) != "myhashkey" {
@@ -46,7 +47,7 @@ func TestWebConfig_GetHashKey_UsesProvidedKey(t *testing.T) {
 }
 
 func TestWebConfig_GetBlockKey_GeneratesKey(t *testing.T) {
-	wc := WebConfig{}
+	wc := new(WebConfig)
 
 	key := wc.GetBlockKey()
 	if len(key) != 32 {
@@ -55,7 +56,8 @@ func TestWebConfig_GetBlockKey_GeneratesKey(t *testing.T) {
 }
 
 func TestWebConfig_GetBlockKey_UsesProvidedKey(t *testing.T) {
-	wc := WebConfig{CookieBlockKey: "myblockkey"}
+	wc := new(WebConfig)
+	wc.CookieBlockKey = "myblockkey"
 
 	key := wc.GetBlockKey()
 	if string(key) != "myblockkey" {
@@ -180,9 +182,10 @@ dashboard:
 func TestProcessOidcConfigs(t *testing.T) {
 	t.Setenv("SDS__OIDC_TEST_CLIENT_ID", "env-client")
 
-	oidc := map[string]*OidcConfig{
-		"test": {ClientID: "file-client"},
-	}
+	oidc := make(map[string]*OidcConfig)
+	oidcConfig := new(OidcConfig)
+	oidcConfig.ClientID = "file-client"
+	oidc["test"] = oidcConfig
 
 	result := processOidcConfigs(t.Context(), oidc)
 	if result["test"].ClientID != "env-client" {

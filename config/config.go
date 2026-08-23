@@ -76,11 +76,12 @@ func GetConfigWithContext(ctx context.Context) *Config {
 	if config == nil {
 		cfg := GetConfigFromFile(ctx)
 
-		err := envconfig.ProcessWith(ctx, &envconfig.Config{
-			Target:           cfg,
-			Lookuper:         envconfig.PrefixLookuper(EnvKeyPrefix, envconfig.OsLookuper()),
-			DefaultOverwrite: true,
-		})
+		envConfig := new(envconfig.Config)
+		envConfig.Target = cfg
+		envConfig.Lookuper = envconfig.PrefixLookuper(EnvKeyPrefix, envconfig.OsLookuper())
+		envConfig.DefaultOverwrite = true
+
+		err := envconfig.ProcessWith(ctx, envConfig)
 		if err != nil {
 			slog.ErrorContext(ctx, "Failed to process config from env", slog.Any("error", err))
 			os.Exit(1) //nolint:forbidigo // Using os.Exit in config initialization is acceptable.
@@ -135,11 +136,12 @@ func getConfigFromEnv[T any](ctx context.Context, config *T, envKey string) *T {
 		return nil
 	}
 
-	err := envconfig.ProcessWith(ctx, &envconfig.Config{
-		Target:           config,
-		Lookuper:         envconfig.PrefixLookuper(envKey, envconfig.OsLookuper()),
-		DefaultOverwrite: true,
-	})
+	envConfig := new(envconfig.Config)
+	envConfig.Target = config
+	envConfig.Lookuper = envconfig.PrefixLookuper(envKey, envconfig.OsLookuper())
+	envConfig.DefaultOverwrite = true
+
+	err := envconfig.ProcessWith(ctx, envConfig)
 	if err != nil {
 		slog.ErrorContext(
 			ctx,
@@ -228,28 +230,21 @@ func getConfigFilePath(ctx context.Context) string {
 }
 
 func GetDefaultConfig() *Config {
-	return &Config{
-		WebConfig: WebConfig{
-			BaseURL:        "http://localhost:" + strconv.Itoa(defaultPort),
-			Port:           defaultPort,
-			Host:           "127.0.0.1",
-			AuthCookie:     "SDS__AUTH",
-			SessionTimeout: defaultSessionTimeout,
-		},
-		LogConfig: LogConfig{
-			Level:     slog.LevelWarn,
-			AddSource: false,
-		},
-		Dashboard: Dashboard{
-			Reload: Reload{
-				Enabled:         false,
-				ContinueOnError: false,
-				PollInterval:    defaultPollInterval,
-				UseModTime:      true,
-				UseFsNotify:     false,
-			},
-		},
-	}
+	cfg := new(Config)
+	cfg.WebConfig.BaseURL = "http://localhost:" + strconv.Itoa(defaultPort)
+	cfg.WebConfig.Port = defaultPort
+	cfg.WebConfig.Host = "127.0.0.1"
+	cfg.WebConfig.AuthCookie = "SDS__AUTH"
+	cfg.WebConfig.SessionTimeout = defaultSessionTimeout
+	cfg.LogConfig.Level = slog.LevelWarn
+	cfg.LogConfig.AddSource = false
+	cfg.Dashboard.Reload.Enabled = false
+	cfg.Dashboard.Reload.ContinueOnError = false
+	cfg.Dashboard.Reload.PollInterval = defaultPollInterval
+	cfg.Dashboard.Reload.UseModTime = true
+	cfg.Dashboard.Reload.UseFsNotify = false
+
+	return cfg
 }
 
 func (c *WebConfig) GetHashKey() []byte {

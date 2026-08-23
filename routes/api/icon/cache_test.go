@@ -45,8 +45,8 @@ func TestIconCache(t *testing.T) {
 	t.Run("cache overwrite", func(t *testing.T) {
 		key := "overwrite-test"
 
-		cache.add(key, &Icon{Data: []byte("original")})
-		cache.add(key, &Icon{Data: []byte("updated")})
+		cache.add(key, testIcon([]byte("original")))
+		cache.add(key, testIcon([]byte("updated")))
 
 		retrieved, ok := cache.get(key)
 		if !ok {
@@ -72,8 +72,8 @@ func TestInitIconCache(t *testing.T) {
 	}
 
 	// Test that cache works after initialization
-	testIcon := &Icon{Data: []byte("init-test")}
-	cache.add("init-test", testIcon)
+	icon := testIcon([]byte("init-test"))
+	cache.add("init-test", icon)
 
 	retrieved, ok := cache.get("init-test")
 	if !ok {
@@ -83,6 +83,13 @@ func TestInitIconCache(t *testing.T) {
 	if string(retrieved.Data) != "init-test" {
 		t.Error("cache data should be preserved")
 	}
+}
+
+func testIcon(data []byte) *Icon {
+	icon := new(Icon)
+	icon.Data = data
+
+	return icon
 }
 
 func TestIconCacheGetMiss(t *testing.T) {

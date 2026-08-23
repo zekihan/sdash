@@ -99,14 +99,16 @@ func Proxy(w http.ResponseWriter, r *http.Request) {
 }
 
 func getHTTPClient() *http.Client {
-	return &http.Client{
-		Timeout: defaultTimeout,
-		Transport: &http.Transport{
-			MaxIdleConns:        defaultIdleConns,
-			IdleConnTimeout:     defaultIdleConnTimeout,
-			DisableCompression:  true,
-			DisableKeepAlives:   false,
-			MaxIdleConnsPerHost: defaultMaxIdleConnsPerHost,
-		},
-	}
+	transport := new(http.Transport)
+	transport.MaxIdleConns = defaultIdleConns
+	transport.IdleConnTimeout = defaultIdleConnTimeout
+	transport.DisableCompression = true
+	transport.DisableKeepAlives = false
+	transport.MaxIdleConnsPerHost = defaultMaxIdleConnsPerHost
+
+	client := new(http.Client)
+	client.Timeout = defaultTimeout
+	client.Transport = transport
+
+	return client
 }

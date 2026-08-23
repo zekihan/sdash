@@ -18,7 +18,9 @@ func (cfg *Config) postProcessGroups() {
 	}
 
 	if _, ok := cfg.Groups[DefaultGroup]; !ok {
-		cfg.Groups[DefaultGroup] = &Group{Title: "Others"}
+		defaultGroup := new(Group)
+		defaultGroup.Title = "Others"
+		cfg.Groups[DefaultGroup] = defaultGroup
 	}
 
 	groupList := make(GroupList, 0, len(cfg.Groups))

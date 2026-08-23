@@ -59,7 +59,7 @@ func getCurrentConfig(_ context.Context) *Config {
 }
 
 func getConfigFromFile(ctx context.Context) (*Config, error) {
-	newConfig := &Config{}
+	newConfig := new(Config)
 	configPath := getConfigFilePath(ctx)
 
 	fileInfo, err := os.Stat(configPath)
