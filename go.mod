@@ -13,7 +13,7 @@ require (
 	github.com/sahilm/fuzzy v0.1.3
 	github.com/sethvargo/go-envconfig v1.4.3
 	github.com/zekihan/go-commons v1.0.8
-	golang.org/x/oauth2 v0.36.0
+	golang.org/x/oauth2 v0.37.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
