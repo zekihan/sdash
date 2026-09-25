@@ -11,7 +11,6 @@ require (
 	github.com/justinas/alice v1.2.0
 	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25
 	github.com/sahilm/fuzzy v0.1.3
-	github.com/sethvargo/go-envconfig v1.4.3
 	github.com/sethvargo/go-envconfig/v2 v2.0.0
 	github.com/zekihan/go-commons v1.0.8
 	golang.org/x/oauth2 v0.37.0

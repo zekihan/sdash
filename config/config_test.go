@@ -193,6 +193,31 @@ func TestProcessOidcConfigs(t *testing.T) {
 	}
 }
 
+func TestGetConfigFromEnv_PreservesUnsetAndOverwritesEmpty(t *testing.T) {
+	t.Setenv("SDS__OIDC_V2_CLIENT_ID", "")
+
+	oidc := &OidcConfig{
+		ClientID:          "file-client",
+		ClientSecret:      "file-secret",
+		DiscoveryEndpoint: "",
+		Enabled:           true,
+		Default:           false,
+	}
+
+	got := getConfigFromEnv(t.Context(), oidc, "SDS__OIDC_V2_")
+	if got.ClientID != "" {
+		t.Errorf("expected empty client ID from env, got %q", got.ClientID)
+	}
+
+	if got.ClientSecret != "file-secret" {
+		t.Errorf("expected unset client secret to be preserved, got %q", got.ClientSecret)
+	}
+
+	if !got.Enabled {
+		t.Error("expected unset enabled value to be preserved")
+	}
+}
+
 func TestGetConfigFromEnv_Nil(t *testing.T) {
 	var c *OidcConfig
 
