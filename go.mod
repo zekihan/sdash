@@ -3,7 +3,7 @@ module github.com/zekihan/sdash
 go 1.27.1
 
 require (
-	github.com/a-h/templ v0.3.1020
+	github.com/a-h/templ v0.3.1070
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/gorilla/securecookie v1.1.2
@@ -29,7 +29,7 @@ require (
 	github.com/tdewolff/minify/v2 v2.24.17 // indirect
 	github.com/tdewolff/parse/v2 v2.8.16 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 )
 
 //replace github.com/zekihan/go-commons => ../go-commons
