@@ -6,7 +6,7 @@ DIR=$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)
 
 cd "${DIR}/.."
 
-TEMPL_VERSION="v0.3.1020"
+TEMPL_VERSION="v0.3.1070"
 TAILWINDCSS_VERSION="v4.3.3"
 
 arch=$(uname -m)
