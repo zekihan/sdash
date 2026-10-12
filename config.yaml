@@ -5,7 +5,7 @@ web:
 #    cookieHashKey: ""
 #    cookieBlockKey: ""
 log:
-    level: debug
+    level: info
 dashboard:
     reload:
         enabled: true
@@ -15,7 +15,7 @@ dashboard:
         continueOnError: true
 oidc:
     authentik:
-        enabled: true
+        enabled: false
         default: true
 #        clientId: ""
 #        clientSecret: ""

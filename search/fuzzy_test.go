@@ -11,12 +11,13 @@ func TestFuzzySearch(t *testing.T) {
 		query    string
 		expected []string // Expected service keys
 	}{
-		{"Auth", []string{"authentik"}},
-		{"Jelly", []string{"jellyfin"}},
-		{"Home", []string{"homeassistant"}},
-		{"rackspace", []string{"authentik"}},
-		{"media", []string{"jellyfin"}},
-		{"automation", []string{"homeassistant"}},
+		{"Docs", []string{"documentation"}},
+		{"File", []string{"files"}},
+		{"Metrics", []string{"metrics"}},
+		{"example", []string{"documentation"}},
+		{"demo", []string{"documentation"}},
+		{"Monitoring", []string{"metrics"}},
+		{"knowledge", []string{"documentation"}},
 	}
 
 	for _, test := range tests {

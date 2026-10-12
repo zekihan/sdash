@@ -9,7 +9,7 @@ import (
 func TestGetGroup(t *testing.T) {
 	// Test case: Successful rendering
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/group", http.NoBody)
-	req.SetPathValue("group", "infra")
+	req.SetPathValue("group", "applications")
 
 	w := httptest.NewRecorder()
 	GetGroup(w, req)

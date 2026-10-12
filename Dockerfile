@@ -45,11 +45,8 @@ COPY --from=builder /usr/bin/sdash /usr/bin/sdash
 
 ENTRYPOINT ["sdash"]
 
-LABEL org.opencontainers.image.authors="38537758+zekihan@users.noreply.github.com" \
-    org.opencontainers.image.url="https://example.com/" \
-    org.opencontainers.image.documentation="https://docs.example.com/" \
+LABEL org.opencontainers.image.url="https://github.com/zekihan/sdash" \
     org.opencontainers.image.source="https://github.com/zekihan/sdash" \
-    org.opencontainers.image.vendor="zekihan" \
     org.opencontainers.image.licenses="AGPL-3.0" \
-    org.opencontainers.image.title="Sdash" \
-    org.opencontainers.image.description="Sdash is a tool to help you optimize your dashboards for speed and cost."
+    org.opencontainers.image.title="SDash" \
+    org.opencontainers.image.description="A simple configurable service dashboard."
