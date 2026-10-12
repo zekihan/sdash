@@ -12,6 +12,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 env:
   DOCKER_REGISTRY: docker.io
   DOCKERHUB_USERNAME: ${{ secrets.DOCKER_USERNAME }}
@@ -35,8 +38,8 @@ jobs:
       - name: Docker Hub Description
         uses: peter-evans/dockerhub-description@v5.0.0
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_PASSWORD }}
           repository: ${{ env.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
           short-description: ${{ github.event.repository.description }}
           readme-filepath: ./README.md
