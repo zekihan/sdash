@@ -15,6 +15,8 @@ permissions:
   packages: write
 
 env:
+  DOCKER_BUILD_RECORD_UPLOAD: "false"
+  BUILDX_METADATA_PROVENANCE: "disabled"
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
@@ -22,6 +24,13 @@ jobs:
   build_push:
     runs-on: ubuntu-latest
     steps:
+      - name: Mask event email addresses
+        run: |
+          jq -r '.. | objects | .email? // empty | select(type == "string")' "$GITHUB_EVENT_PATH" |
+            while IFS= read -r email; do
+              printf '::add-mask::%s\n' "$email"
+            done
+
       - name: Check Out The Repo
         uses: actions/checkout@v7.0.1
         with:
@@ -115,6 +124,7 @@ jobs:
         with:
           context: .
           push: true
+          provenance: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
