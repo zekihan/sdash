@@ -10,6 +10,37 @@ Here're some of the project's best features:
 *   Single yaml file to configure
 *   fuzzy search
 
+<h2>Icon proxy</h2>
+
+Set `proxyIcon: true` on a service to fetch its icon through `/api/proxy/icon`.
+The proxy accepts PNG, JPEG and GIF responses with matching image content types,
+and decodes and re-encodes them as PNG. GIF animation is reduced to its first frame.
+SVG, HTML, other formats, redirects and non-2xx responses are rejected. If you
+currently proxy SVG icons, configure a raster version before upgrading. The sample
+dashboard's SVG icons load directly because `proxyIcon` defaults to `false`.
+
+Proxied URLs must use HTTP on port 80 or HTTPS on port 443. Every DNS result must
+be a public address; private, loopback, link-local, metadata and special-use
+addresses are blocked. Connections use the validated IP directly while preserving
+the original hostname for Host and TLS verification. Environment HTTP proxies
+are bypassed so they cannot resolve or route around this check. This endpoint
+is intended for public icons, and cannot fetch icons hosted on a private network.
+
+Each upstream body and re-encoded PNG is limited to 1 MiB. Images are limited to
+2,048 pixels on either axis and 1,048,576 pixels in total before decoding. The
+cache retains at most 100 images and 8 MiB of image buffer capacity for ten
+minutes. At most four distinct fetch/decode jobs run at once; simultaneous misses
+for the same URL share a job. Overload returns 503. A bounded per-peer limiter
+allows 120 requests per minute, including cache hits, and returns 429 with
+`Retry-After` when exhausted. It uses the connection peer, not forwarded headers,
+so callers behind a reverse proxy share that proxy's budget.
+
+The checked-in listener binds to loopback and OIDC is disabled. Deployments that
+expose SDash to other users should review their authentication and egress policy.
+Local security tests use synthetic DNS answers and mocked/in-memory HTTP peers;
+production networking, reverse-proxy budgets and browser acceptance require a
+separately authorized deployment check.
+
 <h2>💻 Built with</h2>
 
 Technologies used in the project:

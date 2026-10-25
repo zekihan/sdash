@@ -1,7 +1,6 @@
 package icon
 
+// Icon holds an immutable, decoded and re-encoded PNG.
 type Icon struct {
-	URL         string
-	ContentType string
-	Data        []byte
+	Data []byte
 }
