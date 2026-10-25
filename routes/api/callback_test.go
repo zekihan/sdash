@@ -1,18 +1,22 @@
 package api
 
 import (
+	"bytes"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/oauth2-proxy/mockoidc"
 	"github.com/zekihan/go-commons/cookie"
-	"github.com/zekihan/go-commons/session"
 	"golang.org/x/oauth2"
 
 	"github.com/zekihan/sdash/config"
+	"github.com/zekihan/sdash/requestlog"
 	"github.com/zekihan/sdash/session/auth"
 )
 
@@ -39,8 +43,10 @@ func TestAuthCallback(t *testing.T) {
 		ClientSecret: mockOidcServer.ClientSecret,
 		RedirectURL:  "/user/oauth2/test/callback",
 		Endpoint:     provider.Endpoint(),
-		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "offline", "groups", "openid"},
+		Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
 	}
+
+	oauth2Config.Endpoint.AuthStyle = oauth2.AuthStyleInParams
 
 	originalSources := auth.OidcSourceMap
 
@@ -56,6 +62,12 @@ func TestAuthCallback(t *testing.T) {
 	oidcSource.Config = oauth2Config
 	oidcSource.Provider = provider
 	auth.OidcSourceMap = map[string]*auth.OidcSource{"test": oidcSource}
+
+	cfg := config.GetConfigWithContext(t.Context())
+	originalTimeout := cfg.WebConfig.SessionTimeout
+	cfg.WebConfig.SessionTimeout = 2 * time.Second
+
+	t.Cleanup(func() { cfg.WebConfig.SessionTimeout = originalTimeout })
 
 	// Test cases
 	type callbackTestCase struct {
@@ -124,6 +136,17 @@ func TestAuthCallback(t *testing.T) {
 			expectedStatus:   http.StatusInternalServerError,
 			expectedLocation: "",
 		},
+		{
+			name:        "Provider error containing credentials",
+			oidcKey:     "test",
+			stateCookie: "state-secret$$$/dashboard",
+			queryParams: url.Values{
+				"state": {"state-secret$$$/dashboard"},
+				"code":  {"code-secret"},
+			},
+			expectedStatus:   http.StatusInternalServerError,
+			expectedLocation: "",
+		},
 	}
 
 	redirectCases := redirectTestCases()
@@ -153,14 +176,7 @@ func TestAuthCallback(t *testing.T) {
 			)
 
 			if tc.expectedStatus == http.StatusSeeOther {
-				mockSession, sessionErr := mockOidcServer.SessionStore.NewSession(
-					"openid profile email", "", mockoidc.DefaultUser(), "", "",
-				)
-				if sessionErr != nil {
-					t.Fatalf("failed to create mock session: %v", sessionErr)
-				}
-
-				tc.queryParams.Set("code", mockSession.SessionID)
+				setMockCallbackCode(t, mockOidcServer, tc.queryParams)
 			}
 
 			req.URL.RawQuery = tc.queryParams.Encode()
@@ -176,11 +192,15 @@ func TestAuthCallback(t *testing.T) {
 				req.AddCookie(c)
 			}
 
-			// Create response recorder
-			rr := httptest.NewRecorder()
+			if tc.name == "Provider error containing credentials" {
+				mockOidcServer.QueueError(&mockoidc.ServerError{
+					Code:        http.StatusInternalServerError,
+					Error:       mockoidc.InternalServerError,
+					Description: "code-secret state-secret",
+				})
+			}
 
-			// Call AuthCallback
-			AuthCallback(rr, req)
+			rr := loggedCallback(t, req, tc.stateCookie)
 
 			// Assert status code
 			if rr.Code != tc.expectedStatus {
@@ -192,38 +212,44 @@ func TestAuthCallback(t *testing.T) {
 			}
 
 			if tc.expectedStatus == http.StatusSeeOther {
-				assertAuthenticatedSession(t, rr)
+				assertSessionCookie(t, rr, &cfg.WebConfig)
 			}
 		})
 	}
 }
 
-func assertAuthenticatedSession(t *testing.T, rec *httptest.ResponseRecorder) {
+func loggedCallback(t *testing.T, req *http.Request, state string) *httptest.ResponseRecorder {
 	t.Helper()
 
-	response := rec.Result()
-	defer response.Body.Close()
+	var logs bytes.Buffer
 
-	cookieRequest := httptest.NewRequestWithContext(
-		t.Context(),
-		http.MethodGet,
-		"/",
-		http.NoBody,
+	originalLogger := slog.Default()
+
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	defer slog.SetDefault(originalLogger)
+
+	rec := httptest.NewRecorder()
+	requestlog.Logging(http.HandlerFunc(AuthCallback)).ServeHTTP(rec, req)
+
+	for _, secret := range []string{"code-secret", "state-secret", state, req.URL.Query().Get("code")} {
+		if secret != "" &&
+			(strings.Contains(logs.String(), secret) || strings.Contains(rec.Body.String(), secret)) {
+			t.Errorf("callback log leaked credential %q", secret)
+		}
+	}
+
+	return rec
+}
+
+func setMockCallbackCode(t *testing.T, server *mockoidc.MockOIDC, query url.Values) {
+	t.Helper()
+
+	mockSession, err := server.SessionStore.NewSession(
+		"openid profile email", "", mockoidc.DefaultUser(), "", "",
 	)
-	for _, authCookie := range response.Cookies() {
-		cookieRequest.AddCookie(authCookie)
-	}
-
-	var authenticated session.Cookie
-
-	cookieName := config.GetConfigWithContext(t.Context()).WebConfig.AuthCookie
-
-	err := cookie.GetCookie(cookieRequest, cookieName, &authenticated)
 	if err != nil {
-		t.Fatalf("failed to read authenticated session: %v", err)
+		t.Fatalf("failed to create mock session: %v", err)
 	}
 
-	if !authenticated.Authenticated {
-		t.Error("callback did not authenticate session")
-	}
+	query.Set("code", mockSession.SessionID)
 }

@@ -3,6 +3,7 @@ package config
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -22,12 +23,17 @@ const (
 	defaultConfigFile         = "config.yaml"
 	defaultPort               = 8080
 	defaultSessionTimeout     = 24 * time.Hour
+	maxSessionTimeout         = 30 * 24 * time.Hour
 	defaultPollInterval       = 5 * time.Second
 	defaultCookieHashKeySize  = 64
 	defaultCookieBlockKeySize = 32
 )
 
 var config *Config
+
+var ErrInvalidSessionTimeout = errors.New(
+	"sessionTimeout must be a whole number of seconds between 1s and 720h",
+)
 
 type Config struct {
 	OidcConfig map[string]*OidcConfig `yaml:"oidc"`
@@ -108,6 +114,12 @@ func GetConfigWithContext(ctx context.Context) *Config {
 			}
 
 			cfg.LogConfig.Level = level
+		}
+
+		err = cfg.WebConfig.ValidateSessionTimeout()
+		if err != nil {
+			slog.ErrorContext(ctx, "Invalid session timeout", slog.Any("error", err))
+			os.Exit(1) //nolint:forbidigo // Invalid security configuration must prevent startup.
 		}
 
 		cfg.OidcConfig = processOidcConfigs(ctx, cfg.OidcConfig)
@@ -279,4 +291,15 @@ func (c *WebConfig) GetBlockKey() []byte {
 	}
 
 	return blockKeyByte
+}
+
+// ValidateSessionTimeout bounds session and browser cookie lifetimes to the
+// secure-cookie codec's maximum age and HTTP cookie second precision.
+func (c *WebConfig) ValidateSessionTimeout() error {
+	if c.SessionTimeout < time.Second || c.SessionTimeout > maxSessionTimeout ||
+		c.SessionTimeout%time.Second != 0 {
+		return ErrInvalidSessionTimeout
+	}
+
+	return nil
 }
