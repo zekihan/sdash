@@ -17,8 +17,8 @@ run: build
 ## tidy: format code and tidy modfile
 .PHONY: tidy
 tidy:
-	templ generate -path ./views
-	templ fmt -prettier-required=true -prettier-command="npx prettier --use-tabs --stdin-filepath \$$TEMPL_PRETTIER_FILENAME" ./views
+	./build/bin/templ generate -path ./views
+	./build/bin/templ fmt -prettier-required=true -prettier-command="./build/node/node_modules/.bin/prettier --use-tabs --stdin-filepath \$$TEMPL_PRETTIER_FILENAME" ./views
 	${GO_EXECUTABLE} fmt ./...
 	${GO_EXECUTABLE} mod tidy -v
 
@@ -60,6 +60,12 @@ build/local:
 .PHONY: build/all
 build/all:
 	goreleaser build --clean --id all --snapshot
+
+# build/assets: prepare production CSS before packaging a Docker image
+.PHONY: build/assets
+build/assets:
+	./build/bin/tailwindcss --input ./build/tailwind/input.css --output assets/css/tailwind.css
+	NODE_ENV=production NODE_PATH="$(CURDIR)/build/node/node_modules" ./build/node/node_modules/.bin/postcss --config ./build/csspostprocess/postcss.config.js assets/css/scroll.css assets/css/tailwind.css --base assets/css --dir assets/css --ext .min.css
 
 # build/docker: build the binary for docker platforms
 .PHONY: build/docker

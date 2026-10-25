@@ -46,13 +46,11 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends make build-essential
-          if [ -f .github/scripts/install_build_deps.sh ]; then
-            echo "Installing build dependencies from .github/scripts/install_build_deps.sh"
-            bash .github/scripts/install_build_deps.sh
-          else
-            echo "No build dependencies script found, skipping."
-          fi
-          tailwindcss --input ./build/tailwind/input.css --output assets/css/tailwind.css
+          sh .github/scripts/install_build_deps.sh
+          ./build/bin/tailwindcss --input ./build/tailwind/input.css --output assets/css/tailwind.css
+
+      - name: Build supply-chain regression tests
+        run: python3 -m unittest discover -s scripts/tests -v
 
       - name: Tidy
         run: |

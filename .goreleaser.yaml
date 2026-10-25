@@ -9,9 +9,9 @@ before:
   hooks:
     - go fmt ./...
     - go mod tidy
-    - templ generate -path ./views
-    - templ fmt -prettier-required=true -prettier-command="npx prettier --use-tabs --stdin-filepath \$TEMPL_PRETTIER_FILENAME" ./views
-    - tailwindcss --input ./build/tailwind/input.css --output assets/css/tailwind.css
+    - ./build/bin/templ generate -path ./views
+    - ./build/bin/templ fmt -prettier-required=true -prettier-command="./build/node/node_modules/.bin/prettier --use-tabs --stdin-filepath \$TEMPL_PRETTIER_FILENAME" ./views
+    - ./build/bin/tailwindcss --input ./build/tailwind/input.css --output assets/css/tailwind.css
 
 builds:
   - id: all
@@ -82,7 +82,8 @@ checksum:
 
 changelog:
   disable: false
-  use: github
+  # Archive preparation runs without publication credentials.
+  use: git
   sort: asc
   groups:
     - title: Features

@@ -1,71 +1,37 @@
 #!/bin/sh
-
-set -e
-
-DIR=$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)
-
-cd "${DIR}/.."
-
+# Install into this checkout only. Never trust an executable found on PATH.
+set -eu
+ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd -P)
+cd "$ROOT"
 TEMPL_VERSION="v0.3.1070"
 TAILWINDCSS_VERSION="v4.3.3"
-
-arch=$(uname -m)
-if [ "${arch}" = "x86_64" ]; then
-	tailwindcss_arch="x64"
-elif [ "${arch}" = "aarch64" ]; then
-	tailwindcss_arch=arm64
-elif [ "${arch}" = "arm64" ]; then
-	tailwindcss_arch=arm64
-else
-	echo "Unsupported architecture: ${arch}"
-	exit 1
+case $(uname -m) in
+    x86_64) arch=x64 ;;
+    aarch64|arm64) arch=arm64 ;;
+    *) echo "Unsupported architecture" >&2; exit 1 ;;
+esac
+case $(uname -s) in
+    Darwin) os=macos ;;
+    Linux) os=linux ;;
+    *) echo "Unsupported OS" >&2; exit 1 ;;
+esac
+# Keep accepting the historical force flag; installs are now always verified.
+case ${1-} in ''|-f) ;; *) echo "Usage: $0 [-f]" >&2; exit 1 ;; esac
+mkdir -p build/bin
+asset="tailwindcss-${os}-${arch}"
+# Download to a non-executable temporary file. The verifier fails closed before
+# the binary is installed, chmodded, or executed, including on cached installs.
+download=$(mktemp "$ROOT/build/bin/.tailwindcss.XXXXXX")
+trap 'rm -f "$download"' EXIT HUP INT TERM
+curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+    "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWINDCSS_VERSION}/${asset}" \
+    --output "$download"
+sh .github/scripts/verify_tailwind.sh "$asset" "$download"
+chmod 755 "$download"
+mv "$download" build/bin/tailwindcss
+npm ci --ignore-scripts --prefix build/node
+GOBIN="$ROOT/build/bin" go install "github.com/a-h/templ/cmd/templ@${TEMPL_VERSION}"
+# Subsequent workflow steps resolve templ from this checkout too.
+if [ -n "${GITHUB_PATH-}" ]; then
+    printf '%s\n' "$ROOT/build/bin" >> "$GITHUB_PATH"
 fi
-os=$(uname -s)
-if [ "${os}" = "Darwin" ]; then
-	tailwindcss_os=macos
-elif [ "${os}" = "Linux" ]; then
-	tailwindcss_os=linux
-else
-	echo "Unsupported OS: ${os}"
-	exit 1
-fi
-
-install_templ() {
-	# Install templ if not already installed
-	if [ "${FORCE}" -eq 1 ] || ! command -v templ >/dev/null 2>&1; then
-		echo "Installing templ with version ${TEMPL_VERSION}"
-		go install github.com/a-h/templ/cmd/templ@"${TEMPL_VERSION}"
-	fi
-}
-
-install_tailwindcss() {
-	# Install tailwindcss if not already installed
-	if [ "${FORCE}" -eq 1 ] || ! command -v tailwindcss >/dev/null 2>&1; then
-		echo "Installing tailwindcss with version ${TAILWINDCSS_VERSION}"
-		tailwindcss_url="https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWINDCSS_VERSION}/tailwindcss-${tailwindcss_os}-${tailwindcss_arch}"
-		curl -fsSLO "${tailwindcss_url}"
-		chmod +x "tailwindcss-${tailwindcss_os}-${tailwindcss_arch}"
-		sudo mv "tailwindcss-${tailwindcss_os}-${tailwindcss_arch}" /usr/local/bin/tailwindcss
-	fi
-}
-
-#flags
-FORCE=0
-
-while getopts "f" opt; do
-	case ${opt} in
-		f)
-			FORCE=1
-			;;
-		\?)
-			echo "Invalid option: $OPTARG" 1>&2
-			exit 1
-			;;
-	esac
-done
-
-install_templ
-install_tailwindcss
-
-echo "Installed templ version: $(templ version)"
-echo "Installed tailwindcss version: $(tailwindcss -h)"
