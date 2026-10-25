@@ -1,102 +1,101 @@
 package icon
 
 import (
-	"bytes"
+	"strconv"
 	"testing"
+	"time"
 )
 
 func TestIconCache(t *testing.T) {
-	InitIconCache()
+	cache := newIconCache()
+	cache.add("key", &Icon{Data: []byte("original")})
+	cache.add("key", &Icon{Data: []byte("updated")})
 
-	t.Run("add and get", func(t *testing.T) {
-		testIcon := &Icon{
-			URL:         "http://example.com/test.png",
-			Data:        []byte("test-data"),
-			ContentType: "image/png",
+	value, ok := cache.get("key")
+	if !ok || string(value.Data) != "updated" || cache.bytes != len(value.Data) ||
+		cache.order.Len() != 1 {
+		t.Fatal("cache overwrite/accounting failed")
+	}
+
+	if _, ok := cache.get("missing"); ok {
+		t.Fatal("unexpected cache hit")
+	}
+}
+
+func TestIconCacheByteBudget(t *testing.T) {
+	cache := newIconCache()
+	for index := range 20 {
+		cache.add(strconv.Itoa(index), &Icon{Data: make([]byte, maxIconBytes)})
+
+		if cache.bytes > defaultIconCacheBytes {
+			t.Fatalf("cache budget exceeded: %d", cache.bytes)
 		}
+	}
 
-		cache.add("test-key", testIcon)
+	if cache.order.Len() != defaultIconCacheBytes/maxIconBytes {
+		t.Fatal("expected byte-budget eviction")
+	}
 
-		retrieved, ok := cache.get("test-key")
-		if !ok {
-			t.Fatal("expected to find cached item")
-		}
+	before := cache.bytes
+	cache.add("oversized", &Icon{Data: make([]byte, maxIconBytes+1)})
 
-		if retrieved.URL != testIcon.URL {
-			t.Errorf("expected url %s, got %s", testIcon.URL, retrieved.URL)
-		}
+	if _, ok := cache.get("oversized"); ok || cache.bytes != before {
+		t.Fatal("oversized icon entered cache")
+	}
+}
 
-		if !bytes.Equal(retrieved.Data, testIcon.Data) {
-			t.Errorf("expected data %s, got %s", testIcon.Data, retrieved.Data)
-		}
+func TestIconCacheEntryBudgetAndLRU(t *testing.T) {
+	cache := newIconCache()
+	for index := range defaultIconCacheSize {
+		cache.add(strconv.Itoa(index), &Icon{Data: []byte{1}})
+	}
 
-		if retrieved.ContentType != testIcon.ContentType {
-			t.Errorf("expected contentType %s, got %s", testIcon.ContentType, retrieved.ContentType)
-		}
-	})
+	if _, ok := cache.get("0"); !ok {
+		t.Fatal("missing oldest icon")
+	}
 
-	t.Run("get non-existent key", func(t *testing.T) {
-		_, ok := cache.get("non-existent-key")
-		if ok {
-			t.Error("expected not to find non-existent key")
-		}
-	})
+	cache.add("new", &Icon{Data: []byte{1}})
 
-	t.Run("cache overwrite", func(t *testing.T) {
-		key := "overwrite-test"
+	if _, ok := cache.get("1"); ok {
+		t.Fatal("least recently used icon was not evicted")
+	}
 
-		cache.add(key, testIcon([]byte("original")))
-		cache.add(key, testIcon([]byte("updated")))
+	if _, ok := cache.get("0"); !ok || cache.order.Len() != defaultIconCacheSize {
+		t.Fatal("cache access did not preserve entry/count budget")
+	}
+}
 
-		retrieved, ok := cache.get(key)
-		if !ok {
-			t.Fatal("expected to find cached item")
-		}
+func TestIconCacheExpiration(t *testing.T) {
+	cache := newIconCache()
+	now := time.Now()
+	cache.now = func() time.Time { return now }
+	cache.add("key", &Icon{Data: []byte{1}})
 
-		if string(retrieved.Data) != "updated" {
-			t.Errorf("expected updated data, got %s", retrieved.Data)
-		}
-	})
+	now = now.Add(defaultIconCacheTTL)
+
+	if _, ok := cache.get("key"); ok || cache.bytes != 0 || cache.order.Len() != 0 {
+		t.Fatal("expired entry retained or byte accounting incorrect")
+	}
 }
 
 func TestInitIconCache(t *testing.T) {
-	// Test that initialization doesn't panic and creates a working cache
 	InitIconCache()
 
-	if cache == nil {
-		t.Fatal("expected cache to be initialized")
-	}
-
-	if cache.cache == nil {
-		t.Fatal("expected cache.cache to be initialized")
-	}
-
-	// Test that cache works after initialization
-	icon := testIcon([]byte("init-test"))
-	cache.add("init-test", icon)
-
-	retrieved, ok := cache.get("init-test")
-	if !ok {
-		t.Error("cache should work after initialization")
-	}
-
-	if string(retrieved.Data) != "init-test" {
-		t.Error("cache data should be preserved")
+	if defaultProxy.cache == nil || defaultProxy.cache.entries == nil {
+		t.Fatal("cache not initialized")
 	}
 }
 
-func testIcon(data []byte) *Icon {
-	icon := new(Icon)
-	icon.Data = data
+func TestIconCacheCountsRetainedCapacity(t *testing.T) {
+	cache := newIconCache()
 
-	return icon
-}
+	for index := range 20 {
+		data := make([]byte, 1, maxIconBytes)
+		cache.add(strconv.Itoa(index), &Icon{Data: data})
+	}
 
-func TestIconCacheGetMiss(t *testing.T) {
-	InitIconCache()
-
-	_, ok := cache.get("non-existent-key")
-	if ok {
-		t.Fatal("expected cache miss for non-existent key")
+	if cache.bytes != defaultIconCacheBytes ||
+		cache.order.Len() != defaultIconCacheBytes/maxIconBytes {
+		t.Fatal("cache must count retained capacity, not just the image length")
 	}
 }
