@@ -2,7 +2,6 @@ package views
 
 import (
 	"bytes"
-	"context"
 	"strings"
 	"testing"
 
@@ -11,12 +10,16 @@ import (
 
 func TestCardExternalLink(t *testing.T) {
 	var rendered bytes.Buffer
-	err := card(&dashboard.Service{
-		Key: "example", Title: "Example", URL: "https://example.com/service?one=1&two=2",
-	}).Render(context.Background(), &rendered)
+	var service dashboard.Service
+	service.Key = "example"
+	service.Title = "Example"
+	service.URL = "https://example.com/service?one=1&two=2"
+
+	err := card(&service).Render(t.Context(), &rendered)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	html := rendered.String()
 	for _, want := range []string{
 		`<a `,
@@ -30,6 +33,7 @@ func TestCardExternalLink(t *testing.T) {
 			t.Errorf("rendered card missing %q: %s", want, html)
 		}
 	}
+
 	for _, unsafe := range []string{"onclick=", "onauxclick=", "window.open"} {
 		if strings.Contains(html, unsafe) {
 			t.Errorf("rendered card contains obsolete navigation handler %q", unsafe)
@@ -39,12 +43,16 @@ func TestCardExternalLink(t *testing.T) {
 
 func TestCardRejectsJavaScriptURL(t *testing.T) {
 	var rendered bytes.Buffer
-	err := card(&dashboard.Service{
-		Key: "example", Title: "Example", URL: "javascript:alert(document.domain)",
-	}).Render(context.Background(), &rendered)
+	var service dashboard.Service
+	service.Key = "example"
+	service.Title = "Example"
+	service.URL = "javascript:alert(document.domain)"
+
+	err := card(&service).Render(t.Context(), &rendered)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if strings.Contains(rendered.String(), "javascript:") {
 		t.Fatal("card rendered an executable JavaScript URL")
 	}
