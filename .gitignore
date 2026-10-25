@@ -58,3 +58,10 @@ views/*_templ.txt
 *.ipr
 *.iws
 .idea/**/.gitignore
+
+# Repository-local verified build dependencies
+build/bin/
+build/node/node_modules/
+scripts/tests/__pycache__/
+/.cache/
+assets/css/*.min.css

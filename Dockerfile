@@ -1,24 +1,4 @@
-FROM --platform=$BUILDPLATFORM docker.io/node:24-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS tailwind
-WORKDIR /app
-
-RUN npm install -D tailwindcss @tailwindcss/cli @tailwindcss/postcss cssnano postcss postcss-cli
-
-COPY build ./build
-COPY views ./views
-COPY assets/css ./assets/css
-
-ENV NODE_ENV=production
-
-RUN npx @tailwindcss/cli \
-                -i ./build/tailwind/input.css \
-                -o assets/css/tailwind.css
-
-RUN npx postcss --config ./build/csspostprocess/postcss.config.js \
-    assets/css/*.css \
-    --base assets/css \
-    --dir assets/css \
-    --ext ".min.css"
-
+# Build binaries and CSS with the verified build scripts before packaging.
 FROM --platform=$BUILDPLATFORM busybox:1.38.0@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e AS builder
 
 ARG TARGETPLATFORM
@@ -40,7 +20,6 @@ RUN case ${TARGETPLATFORM} in \
 FROM gcr.io/distroless/static-debian12:latest@sha256:d75cdd72874d4790092fcb1b058493ecf6bb5bf2b2b897045b00ff01d91843f2 AS final
 
 COPY ./assets ./assets
-COPY --from=tailwind /app/assets/css ./assets/css
 COPY --from=builder /usr/bin/sdash /usr/bin/sdash
 
 ENTRYPOINT ["sdash"]
