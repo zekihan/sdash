@@ -48,6 +48,10 @@ func TestAuthCallback(t *testing.T) {
 
 	oauth2Config.Endpoint.AuthStyle = oauth2.AuthStyleInParams
 
+	originalSources := auth.OidcSourceMap
+
+	t.Cleanup(func() { auth.OidcSourceMap = originalSources })
+
 	// Mock dependencies
 	oidcConfig := new(config.OidcConfig)
 	oidcConfig.ClientID = mockOidcServer.ClientID
@@ -57,7 +61,6 @@ func TestAuthCallback(t *testing.T) {
 	oidcSource.SelfConfig = oidcConfig
 	oidcSource.Config = oauth2Config
 	oidcSource.Provider = provider
-	originalSources := auth.OidcSourceMap
 	auth.OidcSourceMap = map[string]*auth.OidcSource{"test": oidcSource}
 
 	cfg := config.GetConfigWithContext(t.Context())
@@ -65,57 +68,73 @@ func TestAuthCallback(t *testing.T) {
 	cfg.WebConfig.SessionTimeout = 2 * time.Second
 
 	t.Cleanup(func() { cfg.WebConfig.SessionTimeout = originalTimeout })
-	t.Cleanup(func() { auth.OidcSourceMap = originalSources })
 
 	// Test cases
-	tests := []struct {
-		queryParams    url.Values
-		name           string
-		oidcKey        string
-		stateCookie    string
-		expectedStatus int
-	}{
+	type callbackTestCase struct {
+		queryParams      url.Values
+		name             string
+		oidcKey          string
+		stateCookie      string
+		expectedLocation string
+		expectedStatus   int
+	}
+
+	errorCases := []callbackTestCase{
 		{
-			name:           "Missing OIDC key",
-			oidcKey:        "",
-			queryParams:    nil,
-			stateCookie:    "",
-			expectedStatus: http.StatusNotFound,
+			name:             "Missing OIDC key",
+			oidcKey:          "",
+			queryParams:      nil,
+			stateCookie:      "",
+			expectedStatus:   http.StatusNotFound,
+			expectedLocation: "",
 		},
 		{
-			name:           "Invalid OIDC key",
-			oidcKey:        "invalid",
-			queryParams:    nil,
-			stateCookie:    "",
-			expectedStatus: http.StatusNotFound,
+			name:             "Invalid OIDC key",
+			oidcKey:          "invalid",
+			queryParams:      nil,
+			stateCookie:      "",
+			expectedStatus:   http.StatusNotFound,
+			expectedLocation: "",
 		},
 		{
-			name:           "Missing state cookie",
-			oidcKey:        "test",
-			queryParams:    nil,
-			stateCookie:    "",
-			expectedStatus: http.StatusBadRequest,
+			name:             "Missing state cookie",
+			oidcKey:          "test",
+			queryParams:      nil,
+			stateCookie:      "",
+			expectedStatus:   http.StatusBadRequest,
+			expectedLocation: "",
 		},
 		{
-			name:           "State mismatch",
-			oidcKey:        "test",
-			stateCookie:    "state1$$$redirect",
-			queryParams:    url.Values{"state": {"state2$$$redirect"}},
-			expectedStatus: http.StatusBadRequest,
+			name:             "State mismatch",
+			oidcKey:          "test",
+			stateCookie:      "state1$$$redirect",
+			queryParams:      url.Values{"state": {"state2$$$redirect"}},
+			expectedStatus:   http.StatusBadRequest,
+			expectedLocation: "",
 		},
 		{
-			name:           "State with invalid format",
-			oidcKey:        "test",
-			stateCookie:    "state1$$$redirect$$$asd",
-			queryParams:    url.Values{"state": {"state1$$$redirect$$$asd"}},
-			expectedStatus: http.StatusInternalServerError,
+			name:             "State with invalid format",
+			oidcKey:          "test",
+			stateCookie:      "state-without-separator",
+			queryParams:      url.Values{"state": {"state-without-separator"}},
+			expectedStatus:   http.StatusBadRequest,
+			expectedLocation: "",
 		},
 		{
-			name:           "State with empty redirect",
-			oidcKey:        "test",
-			stateCookie:    "state1$$$",
-			queryParams:    url.Values{"state": {"state1$$$"}},
-			expectedStatus: http.StatusInternalServerError, // No authorization code was supplied.
+			name:             "Token exchange without a code fails",
+			oidcKey:          "test",
+			stateCookie:      "state1$$$redirect$$$asd",
+			queryParams:      url.Values{"state": {"state1$$$redirect$$$asd"}},
+			expectedStatus:   http.StatusInternalServerError,
+			expectedLocation: "",
+		},
+		{
+			name:             "State with empty redirect",
+			oidcKey:          "test",
+			stateCookie:      "state1$$$",
+			queryParams:      url.Values{"state": {"state1$$$"}},
+			expectedStatus:   http.StatusInternalServerError,
+			expectedLocation: "",
 		},
 		{
 			name:        "Provider error containing credentials",
@@ -125,18 +144,25 @@ func TestAuthCallback(t *testing.T) {
 				"state": {"state-secret$$$/dashboard"},
 				"code":  {"code-secret"},
 			},
-			expectedStatus: http.StatusInternalServerError,
+			expectedStatus:   http.StatusInternalServerError,
+			expectedLocation: "",
 		},
-		{
-			name:        "Successful authentication",
-			oidcKey:     "test",
-			stateCookie: "state-secret$$$/dashboard",
-			queryParams: url.Values{
-				"state": {"state-secret$$$/dashboard"},
-				"code":  {"code-secret"},
-			},
-			expectedStatus: http.StatusSeeOther,
-		},
+	}
+
+	redirectCases := redirectTestCases()
+	tests := make([]callbackTestCase, 0, len(errorCases)+len(redirectCases))
+	tests = append(tests, errorCases...)
+
+	for _, redirect := range redirectCases {
+		state := "state$$$" + redirect.target
+		tests = append(tests, callbackTestCase{
+			queryParams:      url.Values{"state": {state}},
+			name:             "Successful authentication/" + redirect.target,
+			oidcKey:          "test",
+			stateCookie:      state,
+			expectedStatus:   http.StatusSeeOther,
+			expectedLocation: redirect.want,
+		})
 	}
 
 	for _, tc := range tests {
@@ -148,6 +174,11 @@ func TestAuthCallback(t *testing.T) {
 				"/callback",
 				http.NoBody,
 			)
+
+			if tc.expectedStatus == http.StatusSeeOther {
+				setMockCallbackCode(t, mockOidcServer, tc.queryParams)
+			}
+
 			req.URL.RawQuery = tc.queryParams.Encode()
 			req.SetPathValue("oidc", tc.oidcKey)
 
@@ -161,10 +192,6 @@ func TestAuthCallback(t *testing.T) {
 				req.AddCookie(c)
 			}
 
-			if tc.name == "Successful authentication" {
-				authorizeMockCallback(t, mockOidcServer, oauth2Config, tc.stateCookie)
-			}
-
 			if tc.name == "Provider error containing credentials" {
 				mockOidcServer.QueueError(&mockoidc.ServerError{
 					Code:        http.StatusInternalServerError,
@@ -175,54 +202,19 @@ func TestAuthCallback(t *testing.T) {
 
 			rr := loggedCallback(t, req, tc.stateCookie)
 
-			if tc.name == "Successful authentication" {
-				assertSessionCookie(t, rr, &cfg.WebConfig)
-			}
-
 			// Assert status code
 			if rr.Code != tc.expectedStatus {
 				t.Errorf("expected status %d, got %d", tc.expectedStatus, rr.Code)
 			}
+
+			if got := rr.Header().Get("Location"); got != tc.expectedLocation {
+				t.Errorf("Location = %q, want %q", got, tc.expectedLocation)
+			}
+
+			if tc.expectedStatus == http.StatusSeeOther {
+				assertSessionCookie(t, rr, &cfg.WebConfig)
+			}
 		})
-	}
-}
-
-func authorizeMockCallback(
-	t *testing.T,
-	server *mockoidc.MockOIDC,
-	cfg *oauth2.Config,
-	state string,
-) {
-	t.Helper()
-	server.QueueCode("code-secret")
-
-	client := new(http.Client)
-	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
-
-	request, err := http.NewRequestWithContext(
-		t.Context(),
-		http.MethodGet,
-		cfg.AuthCodeURL(state),
-		http.NoBody,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	resp, err := client.Do(request)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	closeErr := resp.Body.Close()
-	if closeErr != nil {
-		t.Fatal(closeErr)
-	}
-
-	if resp.StatusCode != http.StatusFound {
-		t.Fatalf("authorization status: %d", resp.StatusCode)
 	}
 }
 
@@ -239,7 +231,7 @@ func loggedCallback(t *testing.T, req *http.Request, state string) *httptest.Res
 	rec := httptest.NewRecorder()
 	requestlog.Logging(http.HandlerFunc(AuthCallback)).ServeHTTP(rec, req)
 
-	for _, secret := range []string{"code-secret", "state-secret", state} {
+	for _, secret := range []string{"code-secret", "state-secret", state, req.URL.Query().Get("code")} {
 		if secret != "" &&
 			(strings.Contains(logs.String(), secret) || strings.Contains(rec.Body.String(), secret)) {
 			t.Errorf("callback log leaked credential %q", secret)
@@ -247,4 +239,17 @@ func loggedCallback(t *testing.T, req *http.Request, state string) *httptest.Res
 	}
 
 	return rec
+}
+
+func setMockCallbackCode(t *testing.T, server *mockoidc.MockOIDC, query url.Values) {
+	t.Helper()
+
+	mockSession, err := server.SessionStore.NewSession(
+		"openid profile email", "", mockoidc.DefaultUser(), "", "",
+	)
+	if err != nil {
+		t.Fatalf("failed to create mock session: %v", err)
+	}
+
+	query.Set("code", mockSession.SessionID)
 }
