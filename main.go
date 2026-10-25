@@ -21,6 +21,7 @@ import (
 
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/config/dashboard"
+	"github.com/zekihan/sdash/requestlog"
 	"github.com/zekihan/sdash/routes/api"
 	"github.com/zekihan/sdash/routes/api/icon"
 	"github.com/zekihan/sdash/routes/viewroutes"
@@ -68,7 +69,7 @@ func init() {
 	icon.InitIconCache()
 
 	// Init middleware.
-	stdChain = alice.New(middleware.RecoverHandler, middleware.Logging)
+	stdChain = alice.New(middleware.RecoverHandler, requestlog.Logging)
 	authChain = alice.New(
 		middleware.GetAuthMiddlewareForCookie(auth.IsAuthEnabled(), cfg.WebConfig.AuthCookie),
 	)
