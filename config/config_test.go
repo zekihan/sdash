@@ -164,12 +164,17 @@ dashboard:
 
 	t.Setenv("CONFIG_PATH", tmpFile.Name())
 	t.Setenv("SDS__WEB_PORT", "4321")
+	t.Setenv("SDS__WEB_SESSION_TIMEOUT", "2s")
 	t.Setenv("SDS__LOG_LEVEL", "error")
 
 	// Reset package global config
 	config = nil
 
 	cfg := GetConfigWithContext(t.Context())
+	if cfg.WebConfig.SessionTimeout != 2*time.Second {
+		t.Errorf("expected timeout 2s from env, got %s", cfg.WebConfig.SessionTimeout)
+	}
+
 	if cfg.WebConfig.Port != 4321 {
 		t.Errorf("expected port 4321 from env, got %d", cfg.WebConfig.Port)
 	}
@@ -236,4 +241,32 @@ func getCwd(t *testing.T) string {
 	}
 
 	return cwd
+}
+
+func TestValidateSessionTimeout(t *testing.T) {
+	for _, timeout := range []time.Duration{
+		-time.Second, 0, time.Nanosecond, 1500 * time.Millisecond, 31 * 24 * time.Hour,
+	} {
+		cfg := GetDefaultConfig().WebConfig
+		cfg.SessionTimeout = timeout
+
+		err := cfg.ValidateSessionTimeout()
+		if err == nil {
+			t.Errorf("accepted invalid timeout %s", timeout)
+		}
+	}
+
+	for _, timeout := range []time.Duration{time.Second, 24 * time.Hour, 30 * 24 * time.Hour} {
+		cfg := GetDefaultConfig().WebConfig
+		cfg.SessionTimeout = timeout
+
+		err := cfg.ValidateSessionTimeout()
+		if err != nil {
+			t.Errorf("rejected timeout %s: %v", timeout, err)
+		}
+	}
+
+	if got := GetDefaultConfig().WebConfig.SessionTimeout; got != 24*time.Hour {
+		t.Errorf("default timeout = %s", got)
+	}
 }
