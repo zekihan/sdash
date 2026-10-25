@@ -9,8 +9,11 @@ import (
 )
 
 func TestCardExternalLink(t *testing.T) {
-	var rendered bytes.Buffer
-	var service dashboard.Service
+	var (
+		rendered bytes.Buffer
+		service  dashboard.Service
+	)
+
 	service.Key = "example"
 	service.Title = "Example"
 	service.URL = "https://example.com/service?one=1&two=2"
@@ -42,8 +45,11 @@ func TestCardExternalLink(t *testing.T) {
 }
 
 func TestCardRejectsJavaScriptURL(t *testing.T) {
-	var rendered bytes.Buffer
-	var service dashboard.Service
+	var (
+		rendered bytes.Buffer
+		service  dashboard.Service
+	)
+
 	service.Key = "example"
 	service.Title = "Example"
 	service.URL = "javascript:alert(document.domain)"
