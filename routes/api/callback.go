@@ -55,10 +55,7 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redirected := stateParsed[1]
-	if redirected == "" || !strings.HasPrefix(redirected, "/") {
-		redirected = "/"
-	}
+	redirected := localRedirectPath(stateParsed[1])
 
 	ctx := r.Context()
 

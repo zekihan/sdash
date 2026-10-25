@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/zekihan/go-commons/cookie"
 	"github.com/zekihan/go-commons/utils"
@@ -30,7 +31,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redirected := r.URL.Query().Get("redirect")
+	redirected := localRedirectPath(r.URL.Query().Get("redirect"))
 
 	state, err := utils.RandString(defaultStateLength)
 	if web.CheckError(
@@ -58,7 +59,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func LoginDefault(w http.ResponseWriter, r *http.Request) {
-	redirected := r.URL.Query().Get("redirect")
+	redirected := localRedirectPath(r.URL.Query().Get("redirect"))
 
 	oidcSource, err := auth.GetDefaultOidcSource()
 	if err != nil {
@@ -67,7 +68,6 @@ func LoginDefault(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := fmt.Sprintf("/login/%s?redirect=%s", oidcSource.Key, redirected)
-	//nolint:gosec // oauth flow
-	http.Redirect(w, r, url, http.StatusSeeOther)
+	loginURL := fmt.Sprintf("/login/%s?redirect=%s", oidcSource.Key, url.QueryEscape(redirected))
+	http.Redirect(w, r, loginURL, http.StatusSeeOther)
 }
