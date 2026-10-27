@@ -87,3 +87,10 @@ With `continueOnError: true`, missing or temporarily invalid dashboard files kee
 the last successfully loaded dashboard; later valid changes can reload normally.
 With it disabled, a reload error still panics. Polling skips missing files until
 they reappear; fsnotify removal events attempt a reload immediately.
+
+A dashboard config must contain a YAML mapping. Empty, whitespace-only,
+comments-only, and null documents are reload errors, so a truncate-before-write
+save cannot replace the last good dashboard with an accidental empty one when
+`continueOnError` is enabled. To intentionally clear the dashboard, save `{}`.
+This does not make arbitrary multi-step writes transactional; use atomic
+replacement when a save must never expose intermediate valid YAML.

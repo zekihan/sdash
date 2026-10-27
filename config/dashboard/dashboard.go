@@ -26,7 +26,12 @@ var (
 	config *Config
 )
 
-var ErrConfigFileIsDirectory = errors.New("config file is a directory")
+var (
+	ErrConfigFileIsDirectory = errors.New("config file is a directory")
+	ErrEmptyConfig           = errors.New(
+		"config must contain a YAML mapping; use {} for an empty dashboard",
+	)
+)
 
 type (
 	GroupList    []*Group
@@ -93,8 +98,6 @@ func getConfigFromFile(ctx context.Context) (*Config, error) {
 		return newConfig, ErrConfigFileIsDirectory
 	}
 
-	newConfig.LastModTime = fileInfo.ModTime()
-
 	content, err := io.ReadAll(file)
 	if err != nil {
 		slog.ErrorContext(
@@ -106,7 +109,12 @@ func getConfigFromFile(ctx context.Context) (*Config, error) {
 		return newConfig, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	err = yaml.Unmarshal(content, newConfig)
+	// A truncated file, comments-only document, or YAML null must not publish
+	// an empty dashboard while an editor is still writing. An explicit mapping
+	// (including {}) is required; errors retain the existing reload policy.
+	var parsedConfig *Config
+
+	err = yaml.Unmarshal(content, &parsedConfig)
 	if err != nil {
 		slog.ErrorContext(
 			ctx,
@@ -117,9 +125,14 @@ func getConfigFromFile(ctx context.Context) (*Config, error) {
 		return newConfig, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	newConfig.postProcessConfig()
+	if parsedConfig == nil {
+		return newConfig, ErrEmptyConfig
+	}
 
-	return newConfig, nil
+	parsedConfig.LastModTime = fileInfo.ModTime()
+	parsedConfig.postProcessConfig()
+
+	return parsedConfig, nil
 }
 
 func (cfg *Config) postProcessConfig() {

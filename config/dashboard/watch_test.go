@@ -214,3 +214,70 @@ func TestWatchConfigEventsIgnoresOtherFiles(t *testing.T) {
 		t.Fatal("unrelated event reloaded configuration")
 	}
 }
+
+func TestReloadPreservesConfigDuringTruncateThenInvalidWrite(t *testing.T) {
+	filename := prepareReloadTest(t)
+
+	// Force the intermediate state emitted by O_TRUNC before the writer supplies
+	// bytes, rather than relying on the operating system's event timing.
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+
+	reload(t.Context())
+	requireService(t, "initial")
+
+	_, err = file.WriteString("services: [")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reload(t.Context())
+	requireService(t, "initial")
+
+	writeDashboard(t, filename, "recovered")
+	reload(t.Context())
+	requireService(t, "recovered")
+}
+
+func TestReloadEmptyDocumentPolicy(t *testing.T) {
+	for _, content := range []string{"", "  \n", "# comment\n", "null\n", "---\n"} {
+		t.Run(content, func(t *testing.T) {
+			filename := prepareReloadTest(t)
+
+			err := os.WriteFile(filename, []byte(content), 0o600)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			reload(t.Context())
+			requireService(t, "initial")
+			generalConfig.GetConfigWithContext(t.Context()).Dashboard.Reload.ContinueOnError = false
+
+			defer func() {
+				if recover() == nil {
+					t.Error("expected panic for an empty document with ContinueOnError disabled")
+				}
+			}()
+
+			reload(t.Context())
+		})
+	}
+}
+
+func TestReloadExplicitEmptyMapping(t *testing.T) {
+	filename := prepareReloadTest(t)
+
+	err := os.WriteFile(filename, []byte("{}\n"), 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reload(t.Context())
+
+	if len(getCurrentConfig(t.Context()).Services) != 0 {
+		t.Fatal("explicit empty mapping did not clear services")
+	}
+}

@@ -4,9 +4,11 @@
   capacity is available. Hosted checks were not retried and no runner, billing,
   or workflow settings were changed. Full local Go tests with race detection and
   vet, repository-wide lint, module verification, and a native build passed.
-- [ ] If Linux-specific acceptance is required, run
-  `./scripts/go_test.sh -race -count=50 ./config/dashboard/...` on a Linux host.
-  The disposable-file watcher tests were validated locally on macOS/arm64.
+- [x] Linux/arm64 dashboard tests passed 100 repetitions in a disposable local
+  container using a cross-compiled Go 1.27.3 test binary. The deterministic
+  truncate-before-invalid-write regression failed against the previous commit
+  and passed with the fix. Linux execution did not include the race detector;
+  the full macOS suite and 50 dashboard repetitions passed with race detection.
 
 No live dashboard configuration or deployment was changed or needed for these
 regression tests. Merge and deployment remain outside this task's authorization.
