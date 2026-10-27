@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -25,7 +26,12 @@ var (
 	config *Config
 )
 
-var ErrConfigFileIsDirectory = errors.New("config file is a directory")
+var (
+	ErrConfigFileIsDirectory = errors.New("config file is a directory")
+	ErrEmptyConfig           = errors.New(
+		"config must contain a YAML mapping; use {} for an empty dashboard",
+	)
+)
 
 type (
 	GroupList    []*Group
@@ -62,18 +68,6 @@ func getConfigFromFile(ctx context.Context) (*Config, error) {
 	newConfig := new(Config)
 	configPath := getConfigFilePath(ctx)
 
-	fileInfo, err := os.Stat(configPath)
-	if err != nil {
-		return newConfig, fmt.Errorf("failed to stat config file: %w", err)
-	}
-
-	if fileInfo.IsDir() {
-		return newConfig, ErrConfigFileIsDirectory
-	}
-
-	currMod := fileInfo.ModTime()
-	newConfig.LastModTime = currMod
-
 	file, err := os.Open(configPath)
 	if err != nil {
 		slog.ErrorContext(
@@ -95,6 +89,15 @@ func getConfigFromFile(ctx context.Context) (*Config, error) {
 		}
 	}(file)
 
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return newConfig, fmt.Errorf("failed to stat config file: %w", err)
+	}
+
+	if fileInfo.IsDir() {
+		return newConfig, ErrConfigFileIsDirectory
+	}
+
 	content, err := io.ReadAll(file)
 	if err != nil {
 		slog.ErrorContext(
@@ -106,7 +109,12 @@ func getConfigFromFile(ctx context.Context) (*Config, error) {
 		return newConfig, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	err = yaml.Unmarshal(content, newConfig)
+	// A truncated file, comments-only document, or YAML null must not publish
+	// an empty dashboard while an editor is still writing. An explicit mapping
+	// (including {}) is required; errors retain the existing reload policy.
+	var parsedConfig *Config
+
+	err = yaml.Unmarshal(content, &parsedConfig)
 	if err != nil {
 		slog.ErrorContext(
 			ctx,
@@ -117,9 +125,14 @@ func getConfigFromFile(ctx context.Context) (*Config, error) {
 		return newConfig, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	newConfig.postProcessConfig()
+	if parsedConfig == nil {
+		return newConfig, ErrEmptyConfig
+	}
 
-	return newConfig, nil
+	parsedConfig.LastModTime = fileInfo.ModTime()
+	parsedConfig.postProcessConfig()
+
+	return parsedConfig, nil
 }
 
 func (cfg *Config) postProcessConfig() {
@@ -144,43 +157,33 @@ func watchConfigFileViaModTime(ctx context.Context) {
 	ticker := time.NewTicker(generalConfig.GetConfigWithContext(ctx).Dashboard.Reload.PollInterval)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		configPath := getConfigFilePath(ctx)
-
-		var lastMod time.Time
-
-		cd := getCurrentConfig(ctx)
-		if cd == nil {
-			lastMod = time.Now()
-		} else {
-			lastMod = cd.LastModTime
-		}
-
-		fileInfo, err := os.Stat(configPath)
-		if err != nil || fileInfo.IsDir() {
-			continue
-		}
-
-		currMod := fileInfo.ModTime()
-		if currMod.IsZero() {
-			continue
-		}
-
-		if lastMod.Unix() < currMod.Unix() {
-			slog.InfoContext(
-				ctx,
-				"Config file changed",
-				slog.Any("lastModified", lastMod),
-				slog.Any("currentModified", currMod),
-				slog.String("path", configPath),
-			)
-			reload(ctx)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			reloadIfModTimeChanged(ctx)
 		}
 	}
 }
 
-func watchConfigFileViaFsNotify(ctx context.Context) {
+func reloadIfModTimeChanged(ctx context.Context) {
 	configPath := getConfigFilePath(ctx)
+
+	fileInfo, err := os.Stat(configPath)
+	if err != nil || fileInfo.IsDir() || fileInfo.ModTime().IsZero() {
+		return
+	}
+
+	current := getCurrentConfig(ctx)
+	// Compare the full timestamp in both directions: replacements may be older.
+	if current == nil || !current.LastModTime.Equal(fileInfo.ModTime()) {
+		reload(ctx)
+	}
+}
+
+func watchConfigFileViaFsNotify(ctx context.Context) {
+	configPath := filepath.Clean(getConfigFilePath(ctx))
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -202,7 +205,7 @@ func watchConfigFileViaFsNotify(ctx context.Context) {
 		}
 	}(watcher)
 
-	err = watcher.AddWith(configPath)
+	err = watcher.AddWith(filepath.Dir(configPath))
 	if err != nil {
 		watcherErr := watcher.Close()
 		if watcherErr != nil {
@@ -222,31 +225,28 @@ func watchConfigFileViaFsNotify(ctx context.Context) {
 		os.Exit(1)
 	}
 
+	watchConfigEvents(ctx, watcher, configPath)
+}
+
+func watchConfigEvents(ctx context.Context, watcher *fsnotify.Watcher, configPath string) {
 	for {
-		slog.DebugContext(
-			ctx,
-			"Config file changed",
-			slog.String("path", configPath),
-		)
-
 		select {
-		case event := <-watcher.Events:
-			slog.DebugContext(
-				ctx,
-				"Config file changed",
-				slog.Any("event", event),
-				slog.String("path", configPath),
-			)
+		case <-ctx.Done():
+			return
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return
+			}
 
-			if event.Has(fsnotify.Write) {
-				slog.InfoContext(
-					ctx,
-					"Config file modified, reloading",
-					slog.String("path", configPath),
-				)
+			if filepath.Clean(event.Name) == configPath &&
+				event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Rename|fsnotify.Remove) != 0 {
 				reload(ctx)
 			}
-		case err := <-watcher.Errors:
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return
+			}
+
 			slog.ErrorContext(
 				ctx,
 				"Watcher error",

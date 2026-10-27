@@ -68,3 +68,29 @@ all query values, full URLs, headers and bodies, including callback `code` and
 failed operation without recording provider error bodies, which may echo secrets.
 Operators must configure equivalent query omission/redaction in reverse proxies
 and centralized log pipelines. Those deployment settings are not managed by SDash.
+
+### Dashboard hot reload
+
+Set `dashboard.reload.enabled` in `config.yaml` to reload `dashboard.yaml`.
+With `useFsNotify: true`, SDash watches its parent directory and handles writes,
+creation, removal, and renaming of the configured filename. This supports editors
+that save by atomic replacement, including repeated replacements and later writes.
+Changes to other filenames do not trigger reloads.
+
+The default polling mode compares the complete modification timestamp on every
+`pollInterval`, including subsecond differences. Any different timestamp reloads,
+including an older timestamp on a replacement. Changes that preserve exactly the
+same timestamp are not detected by polling; use fsnotify for those saves. Polling
+observes the latest file at each interval, not every intermediate edit.
+
+With `continueOnError: true`, missing or temporarily invalid dashboard files keep
+the last successfully loaded dashboard; later valid changes can reload normally.
+With it disabled, a reload error still panics. Polling skips missing files until
+they reappear; fsnotify removal events attempt a reload immediately.
+
+A dashboard config must contain a YAML mapping. Empty, whitespace-only,
+comments-only, and null documents are reload errors, so a truncate-before-write
+save cannot replace the last good dashboard with an accidental empty one when
+`continueOnError` is enabled. To intentionally clear the dashboard, save `{}`.
+This does not make arbitrary multi-step writes transactional; use atomic
+replacement when a save must never expose intermediate valid YAML.
