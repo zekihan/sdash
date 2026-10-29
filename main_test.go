@@ -6,23 +6,21 @@ import (
 )
 
 func TestListenerAddress(t *testing.T) {
-	tests := []struct {
-		name string
+	tests := map[string]struct {
 		host string
-		port int
 		want string
 	}{
-		{name: "hostname", host: "localhost", port: 8080, want: "localhost:8080"},
-		{name: "IPv4", host: "127.0.0.1", port: 8080, want: "127.0.0.1:8080"},
-		{name: "empty host", host: "", port: 8080, want: ":8080"},
-		{name: "IPv6 wildcard", host: "::", port: 8080, want: "[::]:8080"},
-		{name: "IPv6 loopback", host: "::1", port: 8080, want: "[::1]:8080"},
+		"hostname":      {host: "localhost", want: "localhost:8080"},
+		"IPv4":          {host: "127.0.0.1", want: "127.0.0.1:8080"},
+		"empty host":    {host: "", want: ":8080"},
+		"IPv6 wildcard": {host: "::", want: "[::]:8080"},
+		"IPv6 loopback": {host: "::1", want: "[::1]:8080"},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := listenerAddress(tt.host, tt.port); got != tt.want {
-				t.Errorf("listenerAddress(%q, %d) = %q, want %q", tt.host, tt.port, got, tt.want)
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if got := listenerAddress(tt.host, 8080); got != tt.want {
+				t.Errorf("listenerAddress(%q, 8080) = %q, want %q", tt.host, got, tt.want)
 			}
 		})
 	}
