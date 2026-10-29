@@ -2,18 +2,10 @@ package views
 
 import (
 	"fmt"
+	"net/url"
+
 	"github.com/zekihan/sdash/config/dashboard"
 )
-
-script groupOnClick(a string) {
-  url = "/dashboard/group/" + a
-  window.location.href = url
-}
-
-script groupOnAuxClick(a string) {
-  url = "/dashboard/group/" + a
-  window.open(url, '_blank')
-}
 
 templ CardLists(config *dashboard.Config) {
 	<div
@@ -26,10 +18,8 @@ templ CardLists(config *dashboard.Config) {
 					<div>
 						<h1
 							class="text-white text-lg title-font font-medium text-center cursor-pointer"
-							onclick={ groupOnClick(group.Key) }
-							onauxclick={ groupOnAuxClick(group.Key) }
 						>
-							{ group.Title }
+							<a href={ templ.URL("/dashboard/group/" + url.PathEscape(group.Key)) }>{ group.Title }</a>
 						</h1>
 						@cardGrid(config, group)
 					</div>
