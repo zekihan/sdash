@@ -31,8 +31,13 @@ const (
 
 var config *Config
 
-var ErrInvalidSessionTimeout = errors.New(
-	"sessionTimeout must be a whole number of seconds between 1s and 720h",
+var (
+	ErrInvalidSessionTimeout = errors.New(
+		"sessionTimeout must be a whole number of seconds between 1s and 720h",
+	)
+	ErrInvalidConfigDocument = errors.New(
+		"config must contain a YAML mapping; use {} for defaults",
+	)
 )
 
 type Config struct {
@@ -202,7 +207,19 @@ func GetConfigFromFile(ctx context.Context) *Config {
 		os.Exit(1)
 	}
 
-	err = yaml.Unmarshal(content, newConfig)
+	// Require an explicit mapping so an empty or truncated file cannot silently
+	// start the server with defaults and no authentication providers.
+	var document yaml.Node
+
+	err = yaml.Unmarshal(content, &document)
+	if err == nil {
+		if len(document.Content) != 1 || document.Content[0].Kind != yaml.MappingNode {
+			err = ErrInvalidConfigDocument
+		} else {
+			err = document.Decode(newConfig)
+		}
+	}
+
 	if err != nil {
 		slog.ErrorContext(
 			ctx,
