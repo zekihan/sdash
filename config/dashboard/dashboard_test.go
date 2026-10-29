@@ -136,32 +136,46 @@ services:
 groups:
   named: {title: Alpha, order: 4}
 `)
+
 			cfg, err := getConfigFromFile(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			if len(cfg.Groups) != 3 || len(cfg.GroupList) != 3 {
 				t.Fatalf("groups: %d map, %d list", len(cfg.Groups), len(cfg.GroupList))
 			}
-			seen := make(map[string]bool)
-			for i, group := range cfg.GroupList {
-				if seen[group.Key] || cfg.Groups[group.Key] != group || !group.HasAny {
-					t.Errorf("invalid group in list: %+v", group)
-				}
-				seen[group.Key] = true
-				if tc.want != nil && group.Key != tc.want[i] {
-					t.Errorf("group %d = %s, want %s", i, group.Key, tc.want[i])
-				}
-			}
-			if cfg.Groups["named"].Title != "Alpha" || cfg.Groups["named"].Order != 4 {
-				t.Error("explicit metadata changed")
-			}
-			if cfg.Groups[DefaultGroup].Title != "Others" || cfg.Services["default"].Group != DefaultGroup {
-				t.Error("default group semantics changed")
-			}
-			if cfg.Services["first"].Group != "custom" || cfg.Services["second"].Group != "custom" {
-				t.Error("generated group membership changed")
-			}
+
+			checkLoadedGroups(t, cfg, tc.want)
 		})
+	}
+}
+
+func checkLoadedGroups(t *testing.T, cfg *Config, want []string) {
+	t.Helper()
+
+	seen := make(map[string]bool)
+	for i, group := range cfg.GroupList {
+		if seen[group.Key] || cfg.Groups[group.Key] != group || !group.HasAny {
+			t.Errorf("invalid group in list: %+v", group)
+		}
+
+		seen[group.Key] = true
+		if i < len(want) && group.Key != want[i] {
+			t.Errorf("group %d = %s, want %s", i, group.Key, want[i])
+		}
+	}
+
+	if cfg.Groups["named"].Title != "Alpha" || cfg.Groups["named"].Order != 4 {
+		t.Error("explicit metadata changed")
+	}
+
+	if cfg.Groups[DefaultGroup].Title != "Others" ||
+		cfg.Services["default"].Group != DefaultGroup {
+		t.Error("default group semantics changed")
+	}
+
+	if cfg.Services["first"].Group != "custom" || cfg.Services["second"].Group != "custom" {
+		t.Error("generated group membership changed")
 	}
 }
