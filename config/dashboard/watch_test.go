@@ -292,29 +292,47 @@ func TestNullEntryReloadPolicyAndRecovery(t *testing.T) {
 			trigger := func() {
 				if mode == "polling" {
 					reloadIfModTimeChanged(t.Context())
+
 					return
 				}
-				watcher := &fsnotify.Watcher{Events: make(chan fsnotify.Event, 1), Errors: make(chan error)}
+
+				watcher := &fsnotify.Watcher{
+					Events: make(chan fsnotify.Event, 1),
+					Errors: make(chan error),
+				}
 				watcher.Events <- fsnotify.Event{Name: filename, Op: fsnotify.Write}
+
 				close(watcher.Events)
 				watchConfigEvents(t.Context(), watcher, filename)
 			}
-			if err := os.WriteFile(filename, []byte("groups: {others: null}"), 0o600); err != nil {
+
+			err := os.WriteFile(filename, []byte("groups: {others: null}"), 0o600)
+			if err != nil {
 				t.Fatal(err)
 			}
+
 			stamp := previous.LastModTime.Add(time.Second)
-			if err := os.Chtimes(filename, stamp, stamp); err != nil {
+
+			err = os.Chtimes(filename, stamp, stamp)
+			if err != nil {
 				t.Fatal(err)
 			}
+
 			trigger()
+
 			if getCurrentConfig(t.Context()) != previous {
 				t.Fatal("invalid config replaced previous config")
 			}
+
 			writeDashboard(t, filename, "recovered")
+
 			stamp = stamp.Add(time.Second)
-			if err := os.Chtimes(filename, stamp, stamp); err != nil {
+
+			err = os.Chtimes(filename, stamp, stamp)
+			if err != nil {
 				t.Fatal(err)
 			}
+
 			trigger()
 			requireService(t, "recovered")
 		})
@@ -323,14 +341,19 @@ func TestNullEntryReloadPolicyAndRecovery(t *testing.T) {
 
 func TestNullEntryFailsFast(t *testing.T) {
 	filename := prepareReloadTest(t)
-	if err := os.WriteFile(filename, []byte("services: {broken: null}"), 0o600); err != nil {
+
+	err := os.WriteFile(filename, []byte("services: {broken: null}"), 0o600)
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	generalConfig.GetConfigWithContext(t.Context()).Dashboard.Reload.ContinueOnError = false
+
 	defer func() {
 		if err := recover(); err == nil || !strings.Contains(fmt.Sprint(err), `service "broken"`) {
 			t.Errorf("expected contextual panic, got %v", err)
 		}
 	}()
+
 	reload(t.Context())
 }

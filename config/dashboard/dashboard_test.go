@@ -191,6 +191,7 @@ func TestGetConfigFromFileRejectsNullEntries(t *testing.T) {
 	} {
 		t.Run(tt.content, func(t *testing.T) {
 			mockConfigFile(t, tt.content)
+
 			_, err := getConfigFromFile(t.Context())
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("expected error containing %q, got %v", tt.want, err)
@@ -201,11 +202,15 @@ func TestGetConfigFromFileRejectsNullEntries(t *testing.T) {
 
 func TestGetConfigFromFileAcceptsEmptyEntriesAndCreatesGroups(t *testing.T) {
 	mockConfigFile(t, "groups: {empty: {}}\nservices: {empty: {}, grouped: {group: missing}}")
+
 	cfg, err := getConfigFromFile(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Groups["empty"] == nil || cfg.Groups["missing"] == nil || cfg.Groups[DefaultGroup] == nil || cfg.Services["empty"] == nil {
+
+	if cfg.Groups["empty"] == nil || cfg.Groups["missing"] == nil ||
+		cfg.Groups[DefaultGroup] == nil ||
+		cfg.Services["empty"] == nil {
 		t.Fatalf("expected empty entries and auto-created groups: %+v", cfg)
 	}
 }
