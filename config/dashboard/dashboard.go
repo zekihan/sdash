@@ -136,8 +136,9 @@ func getConfigFromFile(ctx context.Context) (*Config, error) {
 }
 
 func (cfg *Config) postProcessConfig() {
-	cfg.postProcessGroups()
+	cfg.ensureDefaultGroup()
 	cfg.postProcessServices()
+	cfg.postProcessGroups()
 	cfg.postProcessSearchConfig()
 }
 
