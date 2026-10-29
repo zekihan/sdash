@@ -129,10 +129,29 @@ func getConfigFromFile(ctx context.Context) (*Config, error) {
 		return newConfig, ErrEmptyConfig
 	}
 
+	if err := parsedConfig.validateEntries(); err != nil {
+		return newConfig, err
+	}
+
 	parsedConfig.LastModTime = fileInfo.ModTime()
 	parsedConfig.postProcessConfig()
 
 	return parsedConfig, nil
+}
+
+func (cfg *Config) validateEntries() error {
+	for key, service := range cfg.Services {
+		if service == nil {
+			return fmt.Errorf("service %q must be a mapping, not null", key)
+		}
+	}
+	for key, group := range cfg.Groups {
+		if group == nil {
+			return fmt.Errorf("group %q must be a mapping, not null", key)
+		}
+	}
+
+	return nil
 }
 
 func (cfg *Config) postProcessConfig() {
