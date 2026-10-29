@@ -7,3 +7,11 @@ func Dummy() {
 	// and it is not removed by the compiler.
 	// It is not used in the codebase.
 }
+
+func iconInitial(title string) string {
+	for _, initial := range title {
+		return string(initial)
+	}
+
+	return ""
+}
