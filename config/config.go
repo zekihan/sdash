@@ -127,6 +127,15 @@ func GetConfigWithContext(ctx context.Context) *Config {
 			os.Exit(1) //nolint:forbidigo // Invalid security configuration must prevent startup.
 		}
 
+		// Validate the selected watcher after environment overrides, before a
+		// non-positive interval can panic in time.NewTicker.
+		if reload := cfg.Dashboard.Reload; reload.Enabled && !reload.UseFsNotify &&
+			reload.PollInterval <= 0 {
+			slog.ErrorContext(ctx, "Polling reload requires a positive pollInterval",
+				slog.Duration("pollInterval", reload.PollInterval))
+			os.Exit(1) //nolint:forbidigo // Invalid watcher configuration must prevent startup.
+		}
+
 		cfg.OidcConfig = processOidcConfigs(ctx, cfg.OidcConfig)
 		config = cfg
 	}
