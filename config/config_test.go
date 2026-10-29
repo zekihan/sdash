@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -325,6 +326,74 @@ func TestGetConfigFromFileRequiresMapping(t *testing.T) {
 			var exitErr *exec.ExitError
 			if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
 				t.Fatalf("invalid config must exit 1, got %v\n%s", err, output)
+			}
+		})
+	}
+}
+
+// Exercise validation after YAML loading and environment overrides, without starting a watcher.
+func TestGetConfigRejectsInvalidPollingInterval(t *testing.T) {
+	const childEnv = "SDASH_TEST_POLL_INTERVAL_CHILD"
+	if os.Getenv(childEnv) == "1" {
+		GetConfigWithContext(t.Context())
+
+		return
+	}
+
+	for _, fixture := range []struct {
+		name     string
+		content  string
+		override string
+		valid    bool
+	}{
+		{name: "zero", content: "enabled: true, pollInterval: 0s", override: "", valid: false},
+		{name: "negative", content: "enabled: true, pollInterval: -1s", override: "", valid: false},
+		{name: "env zero", content: "enabled: true, pollInterval: 1s", override: "0s", valid: false},
+		{name: "env negative", content: "enabled: true, pollInterval: 1s", override: "-1s", valid: false},
+		{name: "env repairs YAML", content: "enabled: true, pollInterval: 0s", override: "1s", valid: true},
+		{name: "positive", content: "enabled: true, pollInterval: 1ms", override: "", valid: true},
+		{name: "default", content: "enabled: true", override: "", valid: true},
+		{name: "disabled", content: "enabled: false, pollInterval: 0s", override: "", valid: true},
+		{name: "fsnotify", content: "enabled: true, useFsNotify: true, pollInterval: -1s", override: "", valid: true},
+	} {
+		t.Run(fixture.name, func(t *testing.T) {
+			configPath := filepath.Join(t.TempDir(), "config.yaml")
+			content := "dashboard:\n  reload: {" + fixture.content + "}\n"
+
+			err := os.WriteFile(configPath, []byte(content), 0o600)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			t.Setenv("CONFIG_PATH", configPath)
+			t.Setenv(childEnv, "1")
+
+			//nolint:gosec // Relaunch only this test executable with a fixed test name.
+			cmd := exec.CommandContext(t.Context(), os.Args[0],
+				"-test.run=^TestGetConfigRejectsInvalidPollingInterval$")
+
+			for _, variable := range os.Environ() {
+				if !strings.HasPrefix(variable, EnvKeyPrefix) {
+					cmd.Env = append(cmd.Env, variable)
+				}
+			}
+
+			if fixture.override != "" {
+				cmd.Env = append(cmd.Env, "SDS__DASHBOARD_RELOAD_POLL_INTERVAL="+fixture.override)
+			}
+
+			output, err := cmd.CombinedOutput()
+			if fixture.valid {
+				if err != nil {
+					t.Fatalf("valid polling config rejected: %v\n%s", err, output)
+				}
+
+				return
+			}
+
+			var exitErr *exec.ExitError
+			if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
+				t.Fatalf("invalid polling config must exit 1, got %v\n%s", err, output)
 			}
 		})
 	}

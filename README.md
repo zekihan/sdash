@@ -82,6 +82,9 @@ The default polling mode compares the complete modification timestamp on every
 including an older timestamp on a replacement. Changes that preserve exactly the
 same timestamp are not detected by polling; use fsnotify for those saves. Polling
 observes the latest file at each interval, not every intermediate edit.
+When polling reload is enabled, `pollInterval` must be positive. Zero and negative
+intervals (including environment overrides) are rejected at startup. The interval
+is unused when reload is disabled or `useFsNotify` is enabled.
 
 With `continueOnError: true`, missing or temporarily invalid dashboard files keep
 the last successfully loaded dashboard; later valid changes can reload normally.
