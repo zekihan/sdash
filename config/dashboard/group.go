@@ -12,7 +12,7 @@ type Group struct {
 	Order  int    `yaml:"order"`
 }
 
-func (cfg *Config) postProcessGroups() {
+func (cfg *Config) ensureDefaultGroup() {
 	if cfg.Groups == nil {
 		cfg.Groups = make(map[string]*Group)
 	}
@@ -22,6 +22,10 @@ func (cfg *Config) postProcessGroups() {
 		defaultGroup.Title = "Others"
 		cfg.Groups[DefaultGroup] = defaultGroup
 	}
+}
+
+func (cfg *Config) postProcessGroups() {
+	cfg.ensureDefaultGroup()
 
 	groupList := make(GroupList, 0, len(cfg.Groups))
 
