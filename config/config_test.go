@@ -1,8 +1,10 @@
 package config
 
 import (
+	"errors"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -268,5 +270,62 @@ func TestValidateSessionTimeout(t *testing.T) {
 
 	if got := GetDefaultConfig().WebConfig.SessionTimeout; got != 24*time.Hour {
 		t.Errorf("default timeout = %s", got)
+	}
+}
+
+// Exercise the real loader in a child because invalid configuration exits startup.
+func TestGetConfigFromFileRequiresMapping(t *testing.T) {
+	const childEnv = "SDASH_TEST_CONFIG_MAPPING_CHILD"
+	if os.Getenv(childEnv) == "1" {
+		GetConfigFromFile(t.Context())
+
+		return
+	}
+
+	for _, fixture := range []struct {
+		name    string
+		content string
+		valid   bool
+	}{
+		{name: "empty", content: "", valid: false},
+		{name: "whitespace", content: " \n  ", valid: false},
+		{name: "comments", content: "# interrupted config write\n", valid: false},
+		{name: "null", content: "null\n", valid: false},
+		{name: "tilde", content: "~\n", valid: false},
+		{name: "empty document", content: "---\n", valid: false},
+		{name: "scalar", content: "disabled\n", valid: false},
+		{name: "sequence", content: "[]\n", valid: false},
+		{name: "explicit empty mapping", content: "{}\n", valid: true},
+		{name: "mapping", content: "web:\n  port: 1234\n", valid: true},
+	} {
+		t.Run(fixture.name, func(t *testing.T) {
+			configPath := filepath.Join(t.TempDir(), "config.yaml")
+
+			err := os.WriteFile(configPath, []byte(fixture.content), 0o600)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			t.Setenv("CONFIG_PATH", configPath)
+			t.Setenv(childEnv, "1")
+
+			//nolint:gosec // Relaunch only the current test executable, with a fixed test name.
+			cmd := exec.CommandContext(t.Context(), os.Args[0],
+				"-test.run=^TestGetConfigFromFileRequiresMapping$")
+
+			output, err := cmd.CombinedOutput()
+			if fixture.valid {
+				if err != nil {
+					t.Fatalf("valid config rejected: %v\n%s", err, output)
+				}
+
+				return
+			}
+
+			var exitErr *exec.ExitError
+			if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
+				t.Fatalf("invalid config must exit 1, got %v\n%s", err, output)
+			}
+		})
 	}
 }
