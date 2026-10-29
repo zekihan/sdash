@@ -108,7 +108,7 @@ func main() {
 
 	port := cfg.WebConfig.Port
 	host := cfg.WebConfig.Host
-	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	addr := listenerAddress(host, port)
 	slog.InfoContext(context.Background(), "Starting server on http://"+addr)
 	slog.InfoContext(
 		context.Background(),
@@ -119,7 +119,7 @@ func main() {
 	)
 
 	srv := new(http.Server)
-	srv.Addr = fmt.Sprintf("%s:%d", host, port)
+	srv.Addr = addr
 	srv.Handler = stdChain.Then(http.DefaultServeMux)
 	srv.ReadTimeout = defaultTimeout
 	srv.WriteTimeout = defaultTimeout
@@ -129,4 +129,8 @@ func main() {
 		slog.ErrorContext(context.Background(), "Server failed to start", slog.Any("error", err))
 		os.Exit(1)
 	}
+}
+
+func listenerAddress(host string, port int) string {
+	return net.JoinHostPort(host, strconv.Itoa(port))
 }
