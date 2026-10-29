@@ -3,6 +3,7 @@ package dashboard
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -177,5 +178,39 @@ func checkLoadedGroups(t *testing.T, cfg *Config, want []string) {
 
 	if cfg.Services["first"].Group != "custom" || cfg.Services["second"].Group != "custom" {
 		t.Error("generated group membership changed")
+	}
+}
+
+func TestGetConfigFromFileRejectsNullEntries(t *testing.T) {
+	for _, tt := range []struct{ content, want string }{
+		{"services: {broken: null}", `service "broken"`},
+		{"services:\n  broken:\n", `service "broken"`},
+		{"groups: {broken: null}", `group "broken"`},
+		{"groups:\n  broken:\n", `group "broken"`},
+		{"groups: {others: null}", `group "others"`},
+	} {
+		t.Run(tt.content, func(t *testing.T) {
+			mockConfigFile(t, tt.content)
+
+			_, err := getConfigFromFile(t.Context())
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("expected error containing %q, got %v", tt.want, err)
+			}
+		})
+	}
+}
+
+func TestGetConfigFromFileAcceptsEmptyEntriesAndCreatesGroups(t *testing.T) {
+	mockConfigFile(t, "groups: {empty: {}}\nservices: {empty: {}, grouped: {group: missing}}")
+
+	cfg, err := getConfigFromFile(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if cfg.Groups["empty"] == nil || cfg.Groups["missing"] == nil ||
+		cfg.Groups[DefaultGroup] == nil ||
+		cfg.Services["empty"] == nil {
+		t.Fatalf("expected empty entries and auto-created groups: %+v", cfg)
 	}
 }

@@ -28,6 +28,7 @@ var (
 
 var (
 	ErrConfigFileIsDirectory = errors.New("config file is a directory")
+	ErrNullEntry             = errors.New("entry must be a mapping, not null")
 	ErrEmptyConfig           = errors.New(
 		"config must contain a YAML mapping; use {} for an empty dashboard",
 	)
@@ -129,10 +130,31 @@ func getConfigFromFile(ctx context.Context) (*Config, error) {
 		return newConfig, ErrEmptyConfig
 	}
 
+	err = parsedConfig.validateEntries()
+	if err != nil {
+		return newConfig, err
+	}
+
 	parsedConfig.LastModTime = fileInfo.ModTime()
 	parsedConfig.postProcessConfig()
 
 	return parsedConfig, nil
+}
+
+func (cfg *Config) validateEntries() error {
+	for key, service := range cfg.Services {
+		if service == nil {
+			return fmt.Errorf("service %q: %w", key, ErrNullEntry)
+		}
+	}
+
+	for key, group := range cfg.Groups {
+		if group == nil {
+			return fmt.Errorf("group %q: %w", key, ErrNullEntry)
+		}
+	}
+
+	return nil
 }
 
 func (cfg *Config) postProcessConfig() {
