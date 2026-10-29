@@ -63,3 +63,43 @@ func TestCardRejectsJavaScriptURL(t *testing.T) {
 		t.Fatal("card rendered an executable JavaScript URL")
 	}
 }
+
+func TestCardFallbackInitial(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		title string
+		want  string
+	}{
+		{name: "empty", title: "", want: ""},
+		{name: "ASCII", title: "Example", want: "E"},
+		{name: "Unicode", title: "İzleme", want: "İ"},
+		{name: "emoji", title: "🚀 Launch", want: "🚀"},
+		{name: "escaped", title: "<Example>", want: "&lt;"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					t.Errorf("rendering title %q panicked: %v", test.title, recovered)
+				}
+			}()
+
+			var (
+				service  dashboard.Service
+				rendered bytes.Buffer
+			)
+
+			service.Key = "example"
+			service.Title = test.title
+
+			err := card(&service).Render(t.Context(), &rendered)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			want := `class="text-blue-600 text-4xl font-bold">` + test.want + `</p>`
+			if !strings.Contains(rendered.String(), want) {
+				t.Errorf("fallback initial missing %q: %s", want, rendered.String())
+			}
+		})
+	}
+}
