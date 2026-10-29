@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"cmp"
 	"slices"
 	"strings"
 )
@@ -47,7 +48,7 @@ func (groupList *GroupList) Sort(ordering Ordering) {
 			case OrderingKey:
 				return strings.Compare(firstItem.Key, secondItem.Key)
 			case OrderingOrder:
-				return firstItem.Order - secondItem.Order
+				return cmp.Compare(firstItem.Order, secondItem.Order)
 			case OrderingNone:
 				return 0
 			default:
