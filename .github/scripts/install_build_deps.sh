@@ -3,7 +3,6 @@
 set -eu
 ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd -P)
 cd "$ROOT"
-TEMPL_VERSION="v0.3.1070"
 TAILWINDCSS_VERSION="v4.3.3"
 case $(uname -m) in
     x86_64) arch=x64 ;;
@@ -30,6 +29,7 @@ sh .github/scripts/verify_tailwind.sh "$asset" "$download"
 chmod 755 "$download"
 mv "$download" build/bin/tailwindcss
 npm ci --ignore-scripts --prefix build/node
+TEMPL_VERSION=$(go list -m -f '{{.Version}}' github.com/a-h/templ)
 GOBIN="$ROOT/build/bin" go install "github.com/a-h/templ/cmd/templ@${TEMPL_VERSION}"
 # Subsequent workflow steps resolve templ from this checkout too.
 if [ -n "${GITHUB_PATH-}" ]; then
