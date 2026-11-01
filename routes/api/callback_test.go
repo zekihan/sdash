@@ -75,9 +75,14 @@ func TestAuthCallback(t *testing.T) {
 		name             string
 		oidcKey          string
 		stateCookie      string
+		verifierCookie   string
 		expectedLocation string
 		expectedStatus   int
 	}
+
+	const wrongVerifierCase = "Wrong verifier is rejected by the token endpoint"
+
+	const testVerifier = "test-verifier-0123456789-0123456789-0123456789ab"
 
 	errorCases := []callbackTestCase{
 		{
@@ -85,6 +90,7 @@ func TestAuthCallback(t *testing.T) {
 			oidcKey:          "",
 			queryParams:      nil,
 			stateCookie:      "",
+			verifierCookie:   "",
 			expectedStatus:   http.StatusNotFound,
 			expectedLocation: "",
 		},
@@ -93,6 +99,7 @@ func TestAuthCallback(t *testing.T) {
 			oidcKey:          "invalid",
 			queryParams:      nil,
 			stateCookie:      "",
+			verifierCookie:   "",
 			expectedStatus:   http.StatusNotFound,
 			expectedLocation: "",
 		},
@@ -101,13 +108,33 @@ func TestAuthCallback(t *testing.T) {
 			oidcKey:          "test",
 			queryParams:      nil,
 			stateCookie:      "",
+			verifierCookie:   "",
 			expectedStatus:   http.StatusBadRequest,
+			expectedLocation: "",
+		},
+		{
+			name:             "Missing verifier cookie",
+			oidcKey:          "test",
+			stateCookie:      "state$$$/dashboard",
+			verifierCookie:   "",
+			queryParams:      url.Values{"state": {"state$$$/dashboard"}},
+			expectedStatus:   http.StatusBadRequest,
+			expectedLocation: "",
+		},
+		{
+			name:             wrongVerifierCase,
+			oidcKey:          "test",
+			stateCookie:      "state$$$/dashboard",
+			verifierCookie:   "a-different-verifier-0123456789-0123456789-abcdef",
+			queryParams:      url.Values{"state": {"state$$$/dashboard"}},
+			expectedStatus:   http.StatusInternalServerError,
 			expectedLocation: "",
 		},
 		{
 			name:             "State mismatch",
 			oidcKey:          "test",
 			stateCookie:      "state1$$$redirect",
+			verifierCookie:   "",
 			queryParams:      url.Values{"state": {"state2$$$redirect"}},
 			expectedStatus:   http.StatusBadRequest,
 			expectedLocation: "",
@@ -116,6 +143,7 @@ func TestAuthCallback(t *testing.T) {
 			name:             "State with invalid format",
 			oidcKey:          "test",
 			stateCookie:      "state-without-separator",
+			verifierCookie:   "",
 			queryParams:      url.Values{"state": {"state-without-separator"}},
 			expectedStatus:   http.StatusBadRequest,
 			expectedLocation: "",
@@ -124,6 +152,7 @@ func TestAuthCallback(t *testing.T) {
 			name:             "Token exchange without a code fails",
 			oidcKey:          "test",
 			stateCookie:      "state1$$$redirect$$$asd",
+			verifierCookie:   testVerifier,
 			queryParams:      url.Values{"state": {"state1$$$redirect$$$asd"}},
 			expectedStatus:   http.StatusInternalServerError,
 			expectedLocation: "",
@@ -132,14 +161,16 @@ func TestAuthCallback(t *testing.T) {
 			name:             "State with empty redirect",
 			oidcKey:          "test",
 			stateCookie:      "state1$$$",
+			verifierCookie:   testVerifier,
 			queryParams:      url.Values{"state": {"state1$$$"}},
 			expectedStatus:   http.StatusInternalServerError,
 			expectedLocation: "",
 		},
 		{
-			name:        "Provider error containing credentials",
-			oidcKey:     "test",
-			stateCookie: "state-secret$$$/dashboard",
+			name:           "Provider error containing credentials",
+			oidcKey:        "test",
+			stateCookie:    "state-secret$$$/dashboard",
+			verifierCookie: testVerifier,
 			queryParams: url.Values{
 				"state": {"state-secret$$$/dashboard"},
 				"code":  {"code-secret"},
@@ -160,6 +191,7 @@ func TestAuthCallback(t *testing.T) {
 			name:             "Successful authentication/" + redirect.target,
 			oidcKey:          "test",
 			stateCookie:      state,
+			verifierCookie:   testVerifier,
 			expectedStatus:   http.StatusSeeOther,
 			expectedLocation: redirect.want,
 		})
@@ -175,22 +207,14 @@ func TestAuthCallback(t *testing.T) {
 				http.NoBody,
 			)
 
-			if tc.expectedStatus == http.StatusSeeOther {
-				setMockCallbackCode(t, mockOidcServer, tc.queryParams)
+			if tc.expectedStatus == http.StatusSeeOther || tc.name == wrongVerifierCase {
+				setMockCallbackCode(t, mockOidcServer, tc.queryParams, testVerifier)
 			}
 
 			req.URL.RawQuery = tc.queryParams.Encode()
 			req.SetPathValue("oidc", tc.oidcKey)
 
-			// Set state cookie if provided
-			if tc.stateCookie != "" {
-				c, err := cookie.CreateNewCookie("state", tc.stateCookie)
-				if err != nil {
-					t.Fatalf("failed to create cookie: %v", err)
-				}
-
-				req.AddCookie(c)
-			}
+			addCallbackCookies(t, req, tc.stateCookie, tc.verifierCookie)
 
 			if tc.name == "Provider error containing credentials" {
 				mockOidcServer.QueueError(&mockoidc.ServerError{
@@ -213,6 +237,7 @@ func TestAuthCallback(t *testing.T) {
 
 			if tc.expectedStatus == http.StatusSeeOther {
 				assertSessionCookie(t, rr, &cfg.WebConfig)
+				assertVerifierCleared(t, rr)
 			}
 		})
 	}
@@ -241,11 +266,65 @@ func loggedCallback(t *testing.T, req *http.Request, state string) *httptest.Res
 	return rec
 }
 
-func setMockCallbackCode(t *testing.T, server *mockoidc.MockOIDC, query url.Values) {
+func addCallbackCookies(t *testing.T, req *http.Request, state, verifier string) {
 	t.Helper()
 
+	for name, value := range map[string]string{
+		stateCookieName:    state,
+		verifierCookieName: verifier,
+	} {
+		if value == "" {
+			continue
+		}
+
+		c, err := cookie.CreateNewCookie(name, value)
+		if err != nil {
+			t.Fatalf("failed to create cookie: %v", err)
+		}
+
+		req.AddCookie(c)
+	}
+}
+
+func assertVerifierCleared(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+
+	response := rec.Result()
+	defer response.Body.Close()
+
+	for _, c := range response.Cookies() {
+		if c.Name != verifierCookieName {
+			continue
+		}
+
+		if c.MaxAge >= 0 || c.Value != "" || c.Path != "/" || !c.Secure || !c.HttpOnly {
+			t.Errorf("verifier cookie not cleared properly: %+v", c)
+		}
+
+		return
+	}
+
+	t.Error("verifier cookie was not cleared")
+}
+
+// setMockCallbackCode registers an authorization code bound to the S256
+// challenge of verifier, so the mock token endpoint enforces PKCE.
+func setMockCallbackCode(
+	t *testing.T,
+	server *mockoidc.MockOIDC,
+	query url.Values,
+	verifier string,
+) {
+	t.Helper()
+
+	challenge, err := mockoidc.GenerateCodeChallenge(mockoidc.CodeChallengeMethodS256, verifier)
+	if err != nil {
+		t.Fatalf("failed to compute code challenge: %v", err)
+	}
+
 	mockSession, err := server.SessionStore.NewSession(
-		"openid profile email", "", mockoidc.DefaultUser(), "", "",
+		"openid profile email", "", mockoidc.DefaultUser(),
+		challenge, mockoidc.CodeChallengeMethodS256,
 	)
 	if err != nil {
 		t.Fatalf("failed to create mock session: %v", err)

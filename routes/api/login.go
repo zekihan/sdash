@@ -8,12 +8,15 @@ import (
 	"github.com/zekihan/go-commons/cookie"
 	"github.com/zekihan/go-commons/utils"
 	"github.com/zekihan/go-commons/web"
+	"golang.org/x/oauth2"
 
 	"github.com/zekihan/sdash/session/auth"
 )
 
 const (
 	defaultStateLength = 16
+	stateCookieName    = "state"
+	verifierCookieName = "pkce_verifier"
 )
 
 func Login(w http.ResponseWriter, r *http.Request) {
@@ -46,14 +49,23 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	state = fmt.Sprintf("%s$$$%s", state, redirected)
 
-	err = cookie.SetCookie(w, r, "state", state)
+	err = cookie.SetCookie(w, r, stateCookieName, state)
 	if err != nil {
 		http.Error(w, "failed to set state cookie", http.StatusInternalServerError)
 
 		return
 	}
 
-	authURL := oidcSource.Config.AuthCodeURL(state)
+	verifier := oauth2.GenerateVerifier()
+
+	err = cookie.SetCookie(w, r, verifierCookieName, verifier)
+	if err != nil {
+		http.Error(w, "failed to set verifier cookie", http.StatusInternalServerError)
+
+		return
+	}
+
+	authURL := oidcSource.Config.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
 	//nolint:gosec // oauth flow
 	http.Redirect(w, r, authURL, http.StatusSeeOther)
 }

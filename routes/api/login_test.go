@@ -44,6 +44,8 @@ func TestLogin(t *testing.T) {
 		if rec.Code != http.StatusSeeOther {
 			t.Errorf("expected status %d, got %d", http.StatusSeeOther, rec.Code)
 		}
+
+		assertPKCE(t, rec)
 	})
 
 	t.Run("Invalid OIDC Key", func(t *testing.T) {
@@ -194,5 +196,75 @@ func testProviderLoginReturnPath(t *testing.T, target, want string) {
 
 	if signedState != state {
 		t.Error("OAuth state did not match signed cookie")
+	}
+}
+
+// assertPKCE checks the auth URL carries an S256 challenge and that the
+// verifier cookie holds the matching verifier with the same flags as state.
+func assertPKCE(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+
+	authURL, err := url.Parse(rec.Header().Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := authURL.Query().Get("code_challenge_method"); got != "S256" {
+		t.Errorf("code_challenge_method = %q, want S256", got)
+	}
+
+	challenge := authURL.Query().Get("code_challenge")
+	if challenge == "" {
+		t.Fatal("code_challenge missing from auth URL")
+	}
+
+	response := rec.Result()
+	defer response.Body.Close()
+
+	verifierCookie := findCookie(response, verifierCookieName)
+	stateCookie := findCookie(response, stateCookieName)
+
+	if verifierCookie == nil || stateCookie == nil {
+		t.Fatalf("missing cookies: verifier=%v state=%v", verifierCookie, stateCookie)
+	}
+
+	assertSameFlags(t, verifierCookie, stateCookie)
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", http.NoBody)
+	req.AddCookie(verifierCookie)
+
+	var verifier string
+
+	err = cookie.GetCookie(req, verifierCookieName, &verifier)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if want := oauth2.S256ChallengeFromVerifier(verifier); challenge != want {
+		t.Errorf("code_challenge %q does not match verifier cookie (want %q)", challenge, want)
+	}
+
+	if strings.Contains(authURL.RawQuery, verifier) {
+		t.Error("verifier leaked into auth URL")
+	}
+}
+
+func findCookie(response *http.Response, name string) *http.Cookie {
+	for _, candidate := range response.Cookies() {
+		if candidate.Name == name {
+			return candidate
+		}
+	}
+
+	return nil
+}
+
+func assertSameFlags(t *testing.T, got, want *http.Cookie) {
+	t.Helper()
+
+	if !got.Secure || !got.HttpOnly || got.SameSite != http.SameSiteLaxMode ||
+		got.Path != want.Path || got.MaxAge != want.MaxAge ||
+		got.SameSite != want.SameSite {
+		t.Errorf("verifier cookie flags differ from state cookie: %+v vs %+v", got, want)
 	}
 }

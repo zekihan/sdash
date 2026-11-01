@@ -71,12 +71,24 @@ func assertSessionCookie(
 ) (*http.Request, session.Cookie) {
 	t.Helper()
 
-	cookies := rec.Result().Cookies()
-	if len(cookies) != 1 {
-		t.Fatalf("expected one cookie, got %d", len(cookies))
+	var authCookie *http.Cookie
+
+	for _, candidate := range rec.Result().Cookies() {
+		if candidate.Name != cfg.AuthCookie {
+			continue
+		}
+
+		if authCookie != nil {
+			t.Fatal("expected one auth cookie, got several")
+		}
+
+		authCookie = candidate
 	}
 
-	authCookie := cookies[0]
+	if authCookie == nil {
+		t.Fatal("expected one auth cookie, got none")
+	}
+
 	if authCookie.MaxAge != int(cfg.SessionTimeout/time.Second) || !authCookie.Secure ||
 		!authCookie.HttpOnly ||
 		authCookie.SameSite != http.SameSiteLaxMode {

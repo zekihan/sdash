@@ -10,6 +10,7 @@ import (
 
 	"github.com/zekihan/go-commons/cookie"
 	"github.com/zekihan/go-commons/session"
+	"golang.org/x/oauth2"
 
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/session/auth"
@@ -34,7 +35,7 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 
 	var state string
 
-	err := cookie.GetCookie(r, "state", &state)
+	err := cookie.GetCookie(r, stateCookieName, &state)
 	if err != nil {
 		http.Error(w, "state not found", http.StatusBadRequest)
 
@@ -60,11 +61,26 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var verifier string
+
+	err = cookie.GetCookie(r, verifierCookieName, &verifier)
+	if err != nil || verifier == "" {
+		http.Error(w, "verifier not found", http.StatusBadRequest)
+
+		return
+	}
+
+	clearVerifierCookie(w)
+
 	redirected := localRedirectPath(stateParsed[1])
 
 	ctx := r.Context()
 
-	oauth2Token, err := oidcSource.Config.Exchange(ctx, r.URL.Query().Get("code"))
+	oauth2Token, err := oidcSource.Config.Exchange(
+		ctx,
+		r.URL.Query().Get("code"),
+		oauth2.VerifierOption(verifier),
+	)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to exchange token")
 		http.Error(w, "Failed to exchange token", http.StatusInternalServerError)
@@ -107,6 +123,20 @@ func AuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, redirected, http.StatusSeeOther)
+}
+
+// clearVerifierCookie expires the PKCE verifier so it is single use.
+func clearVerifierCookie(w http.ResponseWriter) {
+	expired, err := cookie.CreateNewCookie(verifierCookieName, "")
+	if err != nil {
+		slog.Error("Failed to clear verifier cookie")
+
+		return
+	}
+
+	expired.Value = ""
+	expired.MaxAge = -1
+	http.SetCookie(w, expired)
 }
 
 func setAuthenticatedSession(w http.ResponseWriter, cfg *config.WebConfig) error {
