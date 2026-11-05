@@ -97,3 +97,5 @@ save cannot replace the last good dashboard with an accidental empty one when
 `continueOnError` is enabled. To intentionally clear the dashboard, save `{}`.
 This does not make arbitrary multi-step writes transactional; use atomic
 replacement when a save must never expose intermediate valid YAML.
+
+Publishing and manual recovery: [Publishing](docs/publishing.md).
