@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
-import textwrap
+import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -100,66 +100,35 @@ class VerifiedBuildTests(unittest.TestCase):
             self.assertTrue(entry['resolved'].startswith('https://registry.npmjs.org/'))
         self.assertEqual(package['devDependencies']['prettier'], '3.9.10')
 
-    def test_publication_credentials_are_isolated_from_build_jobs(self):
-        for name in ('release.yaml', 'docker_release.yaml'):
-            workflow = (ROOT / '.github/workflows' / name).read_text()
-            build, publish = workflow.split('\n  publish:\n', 1)
-            self.assertNotIn('secrets.', build)
-            self.assertNotIn('contents: write', build)
-            self.assertNotIn('packages: write', build)
-            self.assertIn('persist-credentials: false', build)
-            self.assertIn('needs: build', publish)
-            self.assertNotIn('actions/checkout', publish)
-            for command in ('npm ', 'goreleaser ', 'make ', 'install_build_deps', 'templ fmt'):
-                self.assertNotIn(command, publish)
+    def test_publication_uses_one_pinned_shared_contract(self):
+        workflow = (ROOT / '.github/workflows/release.yaml').read_text()
+        calls = re.findall(
+            r'uses: zekihan/release-workflows/\.github/workflows/(\w+)\.yaml@([0-9a-f]{40})',
+            workflow)
+        self.assertEqual([name for name, _ in calls], ['decide', 'image', 'release'])
+        self.assertEqual(len({pin for _, pin in calls}), 1)
+        self.assertNotIn('secrets: inherit', workflow)
+        checks = workflow.split('\n  checks:\n', 1)[1].split('\n  publish:\n', 1)[0]
+        self.assertIn('uses: ./.github/workflows/pr.yaml', checks)
+        self.assertNotIn('secrets', checks)
+        self.assertNotIn('contents: write', checks)
+        self.assertNotIn('packages: write', checks)
+        publish = workflow.split('\n  publish:\n', 1)[1].split('\n  release:\n', 1)[0]
+        self.assertIn('      - checks', publish)
+        release = workflow.split('\n  release:\n', 1)[1]
+        self.assertIn('      - publish', release)
+        self.assertIn('image-digest: ${{ needs.publish.outputs.digest }}', release)
+        self.assertFalse((ROOT / '.github/workflows/docker_release.yaml').exists())
+
+    def test_native_checks_have_no_publication_credentials(self):
+        workflow = (ROOT / '.github/workflows/pr.yaml').read_text()
+        for forbidden in ('secrets.', 'contents: write', 'packages: write'):
+            self.assertNotIn(forbidden, workflow)
+        self.assertIn('persist-credentials: false', workflow)
+        self.assertIn('--single-target', workflow)
         dockerfile = (ROOT / 'Dockerfile').read_text()
         self.assertNotIn('npm', dockerfile)
         self.assertNotIn('npx', dockerfile)
-
-    def publish_fixture(self, tag, tamper=False):
-        dist = self.root / 'dist'
-        dist.mkdir()
-        archive = dist / 'sdash.tar.gz'
-        archive.write_bytes(b'prepared archive fixture')
-        checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
-        (dist / 'checksums.txt').write_text(f'{checksum}  sdash.tar.gz\n')
-        (dist / 'CHANGELOG.md').write_text('Fixture release notes')
-        if tamper:
-            archive.write_bytes(b'modified after build')
-        mocks = self.root / 'mock-bin'
-        mocks.mkdir()
-        gh = mocks / 'gh'
-        gh.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$CALLS"\n')
-        gh.chmod(0o755)
-        calls = self.root / 'calls'
-        workflow = (ROOT / '.github/workflows/release.yaml').read_text()
-        script = textwrap.dedent(workflow.rsplit('        run: |\n', 1)[1])
-        result = subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', script],
-            cwd=self.root, capture_output=True, text=True,
-            env={**os.environ, 'PATH': str(mocks) + os.pathsep + os.environ['PATH'],
-                 'CALLS': str(calls), 'RELEASE_TAG': tag,
-                 'GH_TOKEN': 'synthetic-fixture-token', 'GH_REPO': 'fixture/repository'})
-        return result, calls
-
-    def test_release_publishes_only_prepared_verified_archives(self):
-        result, calls = self.publish_fixture('v1.2.3')
-        self.assertEqual(result.returncode, 0, result.stderr)
-        arguments = calls.read_text().splitlines()
-        self.assertEqual(arguments[:3], ['release', 'create', 'v1.2.3'])
-        self.assertIn('--verify-tag', arguments)
-        self.assertIn('./sdash.tar.gz', arguments)
-        self.assertNotIn('./*.zip', arguments)
-        self.assertNotIn('--prerelease', arguments)
-
-    def test_prerelease_flag_is_preserved(self):
-        result, calls = self.publish_fixture('v1.2.3-rc.1')
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('--prerelease', calls.read_text().splitlines())
-
-    def test_release_checksum_mismatch_prevents_publication(self):
-        result, calls = self.publish_fixture('v1.2.3', tamper=True)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertFalse(calls.exists())
 
 
 if __name__ == '__main__':
