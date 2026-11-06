@@ -9,7 +9,7 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/gorilla/securecookie v1.1.2
 	github.com/justinas/alice v1.2.0
-	github.com/oauth2-proxy/mockoidc v0.0.0-20240214162133-caebfff84d25
+	github.com/oauth2-proxy/mockoidc v0.0.0-20261103160011-e06ed0b7cb7f
 	github.com/sahilm/fuzzy v0.1.3
 	github.com/sethvargo/go-envconfig/v2 v2.0.0
 	github.com/zekihan/go-commons v1.0.9
@@ -18,8 +18,7 @@ require (
 )
 
 require (
-	github.com/go-jose/go-jose/v3 v3.0.5 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.5 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.8 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
@@ -27,7 +26,6 @@ require (
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/tdewolff/minify/v2 v2.24.23 // indirect
 	github.com/tdewolff/parse/v2 v2.8.20 // indirect
-	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 )
 
