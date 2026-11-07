@@ -3,7 +3,7 @@
 set -eu
 ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd -P)
 cd "$ROOT"
-TAILWINDCSS_VERSION="v4.3.3"
+TAILWINDCSS_VERSION="v4.3.4"
 case $(uname -m) in
     x86_64) arch=x64 ;;
     aarch64|arm64) arch=arm64 ;;
