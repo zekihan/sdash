@@ -3,9 +3,11 @@ FROM --platform=$BUILDPLATFORM busybox:1.38.0@sha256:a46257e06c82ad85242d0d38077
 
 ARG TARGETPLATFORM
 
+WORKDIR /build
+
 COPY ./dist ./dist
 
-RUN case ${TARGETPLATFORM} in \
+RUN case "${TARGETPLATFORM}" in \
         "linux/amd64")    ARCH="amd64"    ;; \
         "linux/arm64")    ARCH="arm64"    ;; \
         "linux/riscv64")  ARCH="riscv64"  ;; \
@@ -15,9 +17,11 @@ RUN case ${TARGETPLATFORM} in \
         "linux/arm/v7")   ARCH="armv7"   ;; \
         "linux/arm/v6")   ARCH="armv6"   ;; \
     esac && \
-    mv ./dist/sdash_linux_${ARCH}/sdash /usr/bin/sdash
+    mv "./dist/sdash_linux_${ARCH}/sdash" /usr/bin/sdash
 
 FROM gcr.io/distroless/static-debian12:latest@sha256:d75cdd72874d4790092fcb1b058493ecf6bb5bf2b2b897045b00ff01d91843f2 AS final
+
+WORKDIR /
 
 COPY ./assets ./assets
 COPY --from=builder /usr/bin/sdash /usr/bin/sdash
