@@ -26,6 +26,8 @@ WORKDIR /
 COPY ./assets ./assets
 COPY --from=builder /usr/bin/sdash /usr/bin/sdash
 
+USER 25000:25000
+
 ENTRYPOINT ["sdash"]
 
 LABEL org.opencontainers.image.authors="" \
