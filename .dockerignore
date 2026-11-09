@@ -31,3 +31,17 @@ Dockerfile
 renovate.json
 views/*_templ.go
 views/*_templ.txt
+
+# VCS, CI and editor metadata
+.git
+.github
+.idea
+.vscode
+
+# Local build tooling (tailwind/templ binaries, node_modules); the image only
+# needs dist/ from goreleaser and assets/
+build/
+node_modules/
+
+# Local secrets
+.env.*
