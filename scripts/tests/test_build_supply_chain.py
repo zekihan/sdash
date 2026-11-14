@@ -98,7 +98,7 @@ class VerifiedBuildTests(unittest.TestCase):
             self.assertEqual(version, entry['version'])
             self.assertTrue(entry['integrity'].startswith('sha512-'))
             self.assertTrue(entry['resolved'].startswith('https://registry.npmjs.org/'))
-        self.assertEqual(package['devDependencies']['prettier'], '3.9.10')
+        self.assertEqual(package['devDependencies']['prettier'], '3.10.1')
 
     def test_publication_uses_one_pinned_shared_contract(self):
         workflow = (ROOT / '.github/workflows/release.yaml').read_text()
