@@ -86,7 +86,7 @@ func TestMinifluxAndPaperless(t *testing.T) {
 			return
 		}
 
-		_, _ = w.Write([]byte(`{"documents_total":412,"documents_inbox_total":3}`))
+		_, _ = w.Write([]byte(`{"documents_total":412,"documents_inbox":3}`))
 	}))
 	defer paperless.Close()
 

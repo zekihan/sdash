@@ -400,7 +400,7 @@ func (provider *Provider) semaphoreTemplateName(
 //nolint:tagliatelle // upstream API uses snake_case
 type paperlessStatistics struct {
 	DocumentsTotal int `json:"documents_total"`
-	InboxTotal     int `json:"documents_inbox_total"`
+	InboxTotal     int `json:"documents_inbox"`
 }
 
 func (provider *Provider) fetchPaperless(
