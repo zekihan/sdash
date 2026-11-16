@@ -13,6 +13,109 @@ dashboard:
         useModTime: false
         useFsNotify: true
         continueOnError: true
+# Live health probing of every service in dashboard.yaml.
+health:
+    enabled: true
+    interval: 30s
+    timeout: 5s
+    history: 90
+# Host CPU/memory/disk widget (Linux /proc; degrades to hidden elsewhere).
+system:
+    enabled: true
+# Docker containers widget. Mount the socket read-only, e.g.
+#   volumes: ["/var/run/docker.sock:/var/run/docker.sock:ro"]
+docker:
+    enabled: false
+#    host: /var/run/docker.sock   # or tcp://127.0.0.1:2375
+# Kubernetes + Argo CD cluster widget. In-cluster: uses the pod's service
+# account (needs read-only RBAC for nodes/pods/deployments/namespaces and
+# Argo CD applications). Locally: uses the kubeconfig below or ~/.kube/config.
+kubernetes:
+    enabled: false
+#    kubeconfig: /home/you/.kube/config
+#    argocdNamespace: argocd
+# Proxmox VE cluster widget. Create a read-only API token (PVEAuditor role)
+# under Datacenter > Permissions > API Tokens; apiToken is the full
+# "user@realm!tokenid=secret" value.
+proxmox:
+    enabled: false
+#    url: https://192.168.2.50:8006
+#    apiToken: ""
+#    insecure: true   # stock self-signed node certificates
+# TrueNAS widget (pool health, capacity, alerts). Create an API key under
+# Settings > API Keys.
+truenas:
+    enabled: false
+#    url: https://192.168.2.60
+#    apiKey: ""
+#    insecure: true   # self-signed certificate
+# CrowdSec widget: active decision counts from the LAPI (bouncer API key).
+crowdsec:
+    enabled: false
+#    url: http://crowdsec-service.crowdsec.svc.cluster.local:8080
+#    apiKey: ""
+# Gatus widget: endpoint check summary from your Gatus instance.
+gatus:
+    enabled: false
+#    url: http://gatus.gatus.svc.cluster.local:8080
+# Write actions (Argo sync, rollout restart, Proxmox guest start,
+# Wake-on-LAN, Home Assistant toggles). Off unless enabled; each also needs
+# its own write credential/RBAC (see README).
+actions:
+    enabled: false
+#    wakeOnLan:
+#      - name: pve-1
+#        mac: "aa:bb:cc:dd:ee:ff"
+#        broadcast: 192.168.2.255
+# Server-side preference sync (theme, favorites, ... across browsers).
+preferences:
+    enabled: true
+#    path: /data/prefs.json
+# Per-application card widgets. API keys belong here (or in
+# SDS__INTEGRATIONS_<APP>_API_KEY), never in dashboard.yaml. A service opts
+# in with `widget: {type: sonarr}` in dashboard.yaml.
+integrations:
+    sonarr:
+        url: ""
+#        apiKey: ""
+    radarr:
+        url: ""
+#        apiKey: ""
+    jellyfin:
+        url: ""
+#        apiKey: ""
+    qbittorrent:   # username/password instead of apiKey
+        url: ""
+#        username: ""
+#        password: ""
+    immich:
+        url: ""
+#        apiKey: ""
+    miniflux:
+        url: ""
+#        apiKey: ""
+    forgejo:
+        url: ""
+#        apiKey: ""
+    semaphore:
+        url: ""
+#        apiKey: ""
+    paperless:
+        url: ""
+#        apiKey: ""
+    syncthing:
+        url: ""
+#        apiKey: ""
+    homeassistant: # long-lived access token as apiKey
+        url: ""
+#        apiKey: ""
+# Weather widget via Open-Meteo (no API key). Set your coordinates.
+weather:
+    enabled: false
+#    latitude: 41.0082
+#    longitude: 28.9784
+#    label: Istanbul
+#    units: metric   # or imperial
 oidc:
     authentik:
         enabled: false

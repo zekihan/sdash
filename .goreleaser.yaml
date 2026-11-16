@@ -9,9 +9,7 @@ before:
   hooks:
     - go fmt ./...
     - go mod tidy
-    - ./build/bin/templ generate -path ./views
-    - ./build/bin/templ fmt -prettier-required=true -prettier-command="./build/node/node_modules/.bin/prettier --use-tabs --stdin-filepath \$TEMPL_PRETTIER_FILENAME" ./views
-    - ./build/bin/tailwindcss --input ./build/tailwind/input.css --output assets/css/tailwind.css
+    - npm --prefix web run build
 
 builds:
   - id: all

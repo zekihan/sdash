@@ -44,6 +44,7 @@ type Config struct {
 	Services         map[string]*Service `yaml:"services"`
 	Groups           map[string]*Group   `yaml:"groups"`
 	SearchConfig     *SearchConfig       `yaml:"search"`
+	Settings         *Settings           `yaml:"settings"`
 	OrderServicesVia Ordering            `yaml:"orderServicesVia"`
 	OrderGroupsVia   Ordering            `yaml:"orderGroupsVia"`
 	ServicesList     ServicesList        `yaml:"-"`
@@ -162,6 +163,33 @@ func (cfg *Config) postProcessConfig() {
 	cfg.postProcessServices()
 	cfg.postProcessGroups()
 	cfg.postProcessSearchConfig()
+	cfg.postProcessSettings()
+}
+
+// ReloadListener is notified after the dashboard config is replaced.
+type ReloadListener func(*Config)
+
+var reloadListeners []ReloadListener
+
+// OnReload registers a listener invoked after each successful reload.
+// Listeners run outside the config lock and must not block.
+func OnReload(listener ReloadListener) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	reloadListeners = append(reloadListeners, listener)
+}
+
+func notifyReloaded(cfg *Config) {
+	mutex.RLock()
+
+	listeners := make([]ReloadListener, len(reloadListeners))
+	copy(listeners, reloadListeners)
+	mutex.RUnlock()
+
+	for _, listener := range listeners {
+		listener(cfg)
+	}
 }
 
 func WatchConfigFile() {
@@ -281,12 +309,13 @@ func watchConfigEvents(ctx context.Context, watcher *fsnotify.Watcher, configPat
 }
 
 func reload(ctx context.Context) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
 	configFromFile, err := getConfigFromFile(ctx)
 	if err == nil {
+		mutex.Lock()
 		config = configFromFile
+		mutex.Unlock()
+
+		notifyReloaded(configFromFile)
 
 		return
 	}

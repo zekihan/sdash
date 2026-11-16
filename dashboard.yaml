@@ -1,6 +1,18 @@
 orderGroupsVia: order
 orderServicesVia: title
 
+settings:
+  title: Homelab
+  subtitle: All services, one screen
+  # Placeholders: %s is replaced with the query from the command palette.
+  searchEngine: https://duckduckgo.com/?q=%s
+  searchEngineName: DuckDuckGo
+  defaultTheme: dark        # dark | light | system
+  defaultAccent: lime       # lime | emerald | cyan | sky | amber | orange | rose
+  defaultDensity: comfortable
+  openInNewTab: true
+  # background: https://example.com/wallpaper.jpg
+
 search:
   from:
     service:
@@ -18,13 +30,17 @@ groups:
   monitoring:
     title: Monitoring
     order: 2
+  infrastructure:
+    title: Infrastructure
+    order: 3
   links:
     title: Links
-    order: 3
+    order: 4
 
 services:
   documentation:
     title: Documentation
+    description: Notes and runbooks for the lab
     url: https://docs.example.com
     icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/bookstack.svg
     group: applications
@@ -36,6 +52,7 @@ services:
 
   files:
     title: File Storage
+    description: Sync and share files across devices
     url: https://files.example.com
     icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/nextcloud.svg
     group: applications
@@ -45,8 +62,26 @@ services:
       - files
       - storage
 
+  media:
+    title: Media Server
+    description: Movies, shows and music
+    url: https://media.example.com
+    icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/jellyfin.svg
+    group: applications
+    location: example
+    cluster: demo
+    tags:
+      - media
+      - streaming
+    # healthUrl: https://media.example.com/health
+    # healthKeyword: Healthy
+    # healthStatuses: [200]
+    # healthInsecure: true   # set for self-signed certificates
+    # widget: {type: jellyfin}   # live data; key configured in config.yaml
+
   metrics:
     title: Metrics
+    description: Dashboards and alert history
     url: https://metrics.example.com
     icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/grafana.svg
     group: monitoring
@@ -58,12 +93,36 @@ services:
 
   status:
     title: Status
+    description: Uptime checks for public endpoints
     url: https://status.example.com
     icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/gatus.svg
     group: monitoring
     tags:
       - health
       - uptime
+
+  gitops:
+    title: GitOps
+    description: Cluster deployments and sync state
+    url: https://gitops.example.com
+    icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/argo-cd.svg
+    group: infrastructure
+    location: example
+    cluster: demo
+    tags:
+      - kubernetes
+      - deploy
+
+  dns:
+    title: DNS Filtering
+    description: Network-wide ad and tracker blocking
+    url: https://dns.example.com
+    icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/svg/pi-hole.svg
+    group: infrastructure
+    location: example
+    tags:
+      - dns
+      - network
 
   github:
     title: GitHub

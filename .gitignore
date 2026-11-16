@@ -59,9 +59,12 @@ views/*_templ.txt
 *.iws
 .idea/**/.gitignore
 
-# Repository-local verified build dependencies
-build/bin/
-build/node/node_modules/
-scripts/tests/__pycache__/
+# Frontend dependencies and build output (the Go binary embeds web/dist;
+# only the placeholder is committed so `go build` works before `make web`)
 /.cache/
-assets/css/*.min.css
+web/node_modules/
+web/dist/*
+!web/dist/.gitkeep
+
+# Server-synced dashboard preferences (local runtime state)
+sdash-prefs.json
