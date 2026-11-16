@@ -2,132 +2,203 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"strconv"
+	"syscall"
 	"time"
 
-	"github.com/justinas/alice"
 	"github.com/zekihan/go-commons/cookie"
 	"github.com/zekihan/go-commons/environment"
 	"github.com/zekihan/go-commons/middleware"
 	"github.com/zekihan/go-commons/utils"
-	"github.com/zekihan/go-commons/web/errorroutes"
-	"github.com/zekihan/go-commons/web/health"
-	"github.com/zekihan/go-commons/web/ping"
 
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/config/dashboard"
+	"github.com/zekihan/sdash/internal/appwidgets"
+	"github.com/zekihan/sdash/internal/crowdsecinfo"
+	"github.com/zekihan/sdash/internal/dockerinfo"
+	"github.com/zekihan/sdash/internal/gatusinfo"
+	"github.com/zekihan/sdash/internal/health"
+	"github.com/zekihan/sdash/internal/icon"
+	"github.com/zekihan/sdash/internal/kubeinfo"
+	"github.com/zekihan/sdash/internal/pbsinfo"
+	"github.com/zekihan/sdash/internal/proxmoxinfo"
+	"github.com/zekihan/sdash/internal/server"
+	"github.com/zekihan/sdash/internal/truenasinfo"
+	"github.com/zekihan/sdash/internal/weather"
 	"github.com/zekihan/sdash/requestlog"
-	"github.com/zekihan/sdash/routes/api"
-	"github.com/zekihan/sdash/routes/api/icon"
-	"github.com/zekihan/sdash/routes/viewroutes"
 	"github.com/zekihan/sdash/session/auth"
 )
 
-var (
-	cfg       *config.Config
-	stdChain  alice.Chain
-	authChain alice.Chain
-)
-
 const (
-	defaultTimeout = 10 * time.Second
+	readHeaderTimeout = 10 * time.Second
+	idleTimeout       = 120 * time.Second
+	shutdownTimeout   = 10 * time.Second
 )
 
-func init() {
-	err := environment.LoadEnvironmentFile()
+var startedAt = time.Now()
+
+func main() {
+	err := run()
 	if err != nil {
-		slog.ErrorContext(
-			context.Background(),
-			"Failed to load environment file",
-			slog.Any("error", err),
-		)
+		slog.Error("Server failed", slog.Any("error", err))
 		os.Exit(1)
 	}
+}
 
-	// Init config.
-	cfg = config.GetConfigWithContext(context.Background())
+func run() error {
+	err := environment.LoadEnvironmentFile()
+	if err != nil {
+		return fmt.Errorf("load environment file: %w", err)
+	}
 
-	// Init logger.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	cfg := config.GetConfigWithContext(ctx)
+
 	loggerConfig := new(utils.LoggerConfig)
 	loggerConfig.Level = cfg.LogConfig.Level
 	loggerConfig.AddSource = cfg.LogConfig.AddSource
 	utils.InitLogger(loggerConfig)
 
 	cookie.InitSecureCookie(cfg.WebConfig.GetHashKey(), cfg.WebConfig.GetBlockKey())
-
-	// Init oidc.
 	auth.Init(cfg)
-
-	// Init dashboard config.
-	dashboard.GetConfigWithContext(context.Background())
-
+	dashboard.GetConfigWithContext(ctx)
 	icon.InitIconCache()
 
-	// Init middleware.
-	stdChain = alice.New(middleware.RecoverHandler, requestlog.Logging)
-	authChain = alice.New(
-		middleware.GetAuthMiddlewareForCookie(auth.IsAuthEnabled(), cfg.WebConfig.AuthCookie),
-	)
-}
-
-func main() {
-	slog.InfoContext(context.Background(), "Starting sdash server")
-	utils.LogVersionInfo(context.Background())
+	slog.InfoContext(ctx, "Starting sdash server")
+	utils.LogVersionInfo(ctx)
 
 	go dashboard.WatchConfigFile()
 
-	// API routes.
-	http.HandleFunc("/api/ping", ping.GetPing)
-	http.HandleFunc("/api/health", health.GetHealth)
-	http.Handle("/api/search", authChain.ThenFunc(api.GetSearch))
-	http.Handle("/api/proxy/icon", authChain.ThenFunc(icon.Proxy))
+	monitor := health.New(cfg.Health, func() []*dashboard.Service {
+		return dashboard.GetConfigWithContext(ctx).ServicesList
+	})
 
-	// Auth routes.
-	http.HandleFunc("/login", api.LoginDefault)
-	http.HandleFunc("/login/{oidc}", api.Login)
-	http.HandleFunc("/user/oauth2/{oidc}/callback", api.AuthCallback)
+	deps := buildDeps(ctx, cfg, monitor)
 
-	// Static files.
-	fsServer := http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets")))
-	http.HandleFunc("/assets/", fsServer.ServeHTTP)
+	srv := server.New(deps)
+	monitor.OnChange(srv.NotifyHealth)
+	dashboard.OnReload(srv.NotifyConfig)
 
-	// Dashboard routes.
-	http.Handle("/dashboard", authChain.ThenFunc(viewroutes.GetDashboard))
-	http.Handle("/dashboard/group/{group}", authChain.ThenFunc(viewroutes.GetGroup))
+	go monitor.Run(ctx)
 
-	// Error routes.
-	http.HandleFunc("/404", errorroutes.GetNotFound)
-	http.HandleFunc("/5xx", errorroutes.Get5xx)
+	addr := listenerAddress(cfg.WebConfig.Host, cfg.WebConfig.Port)
 
-	http.HandleFunc("/", viewroutes.Root)
+	httpServer := new(http.Server)
+	httpServer.Addr = addr
+	httpServer.Handler = middleware.RecoverHandler(requestlog.Logging(srv.Handler()))
+	httpServer.ReadHeaderTimeout = readHeaderTimeout
+	httpServer.IdleTimeout = idleTimeout
 
-	port := cfg.WebConfig.Port
-	host := cfg.WebConfig.Host
-	addr := listenerAddress(host, port)
-	slog.InfoContext(context.Background(), "Starting server on http://"+addr)
-	slog.InfoContext(
-		context.Background(),
-		fmt.Sprintf("Listening on %s:%d", host, port),
-		slog.String("host", host),
-		slog.Int("port", port),
-		slog.String("baseUrl", cfg.WebConfig.BaseURL),
-	)
+	go shutdownOnSignal(ctx, httpServer)
 
-	srv := new(http.Server)
-	srv.Addr = addr
-	srv.Handler = stdChain.Then(http.DefaultServeMux)
-	srv.ReadTimeout = defaultTimeout
-	srv.WriteTimeout = defaultTimeout
+	slog.InfoContext(ctx, "Listening on http://"+addr,
+		slog.String("baseUrl", cfg.WebConfig.BaseURL))
 
-	err := srv.ListenAndServe()
+	err = httpServer.ListenAndServe()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("listen and serve: %w", err)
+	}
+
+	return nil
+}
+
+// buildDeps wires the optional widget clients from cfg. Disabled or
+// misconfigured integrations stay nil and their widgets simply hide.
+func buildDeps(ctx context.Context, cfg *config.Config, monitor *health.Monitor) *server.Deps {
+	deps := new(server.Deps)
+	deps.Config = cfg
+	deps.Monitor = monitor
+	deps.StartedAt = startedAt
+	deps.Widgets = appwidgets.New(&cfg.Integrations)
+
+	if cfg.Docker.Enabled {
+		dockerClient, dockerErr := dockerinfo.New(cfg.Docker.Host)
+		if dockerErr != nil {
+			slog.WarnContext(ctx, "Docker widget unavailable", slog.Any("error", dockerErr))
+		} else {
+			deps.Docker = dockerClient
+		}
+	}
+
+	if cfg.Weather.Enabled {
+		deps.Weather = weather.New(cfg.Weather)
+	}
+
+	if cfg.Kubernetes.Enabled {
+		kubeClient, kubeErr := kubeinfo.New(cfg.Kubernetes)
+		if kubeErr != nil {
+			slog.WarnContext(ctx, "Kubernetes widget unavailable", slog.Any("error", kubeErr))
+		} else {
+			deps.Kube = kubeClient
+		}
+	}
+
+	if cfg.Proxmox.Enabled && cfg.Proxmox.URL != "" && cfg.Proxmox.APIToken != "" {
+		deps.Proxmox = proxmoxinfo.New(cfg.Proxmox)
+	}
+
+	enableInfraWidgets(cfg, deps)
+
+	return deps
+}
+
+// enableInfraWidgets wires the infrastructure-monitoring clients.
+func enableInfraWidgets(cfg *config.Config, deps *server.Deps) {
+	if cfg.PBS.Enabled && cfg.PBS.URL != "" && cfg.PBS.APIToken != "" {
+		deps.PBS = pbsinfo.New(cfg.PBS)
+	}
+
+	if cfg.TrueNAS.Enabled && cfg.TrueNAS.URL != "" && cfg.TrueNAS.APIKey != "" {
+		deps.TrueNAS = truenasinfo.New(cfg.TrueNAS)
+	}
+
+	if cfg.CrowdSec.Enabled && cfg.CrowdSec.URL != "" && cfg.CrowdSec.APIKey != "" {
+		deps.CrowdSec = crowdsecinfo.New(cfg.CrowdSec)
+	}
+
+	if cfg.Preferences.Enabled {
+		deps.Prefs = server.NewPreferenceStore(preferencesPath(cfg))
+	}
+
+	if cfg.Gatus.Enabled && cfg.Gatus.URL != "" {
+		deps.Gatus = gatusinfo.New(cfg.Gatus.URL)
+	}
+}
+
+// preferencesPath resolves the synced-preferences file: explicit config
+// path, else sdash-prefs.json inside CONFIG_DIR (or the working directory).
+func preferencesPath(cfg *config.Config) string {
+	if cfg.Preferences.Path != "" {
+		return cfg.Preferences.Path
+	}
+
+	dir := os.Getenv("CONFIG_DIR")
+	if dir == "" {
+		dir = "."
+	}
+
+	return filepath.Join(dir, "sdash-prefs.json")
+}
+
+func shutdownOnSignal(ctx context.Context, httpServer *http.Server) {
+	<-ctx.Done()
+
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
+	defer cancel()
+
+	err := httpServer.Shutdown(shutdownCtx)
 	if err != nil {
-		slog.ErrorContext(context.Background(), "Server failed to start", slog.Any("error", err))
-		os.Exit(1)
+		slog.ErrorContext(ctx, "Graceful shutdown failed", slog.Any("error", err))
 	}
 }
 

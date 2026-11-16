@@ -11,16 +11,51 @@ import (
 const DefaultGroup = "others"
 
 type Service struct {
-	Key       string   `yaml:"-"`
-	Title     string   `yaml:"title"`
-	Group     string   `yaml:"group"`
-	Location  string   `yaml:"location"`
-	Cluster   string   `yaml:"cluster"`
-	URL       string   `yaml:"url"`
-	Icon      string   `yaml:"icon"`
-	Tags      []string `yaml:"tags"`
-	Order     int      `yaml:"order"`
-	ProxyIcon bool     `yaml:"proxyIcon"`
+	OpenInNewTab   *bool    `yaml:"openInNewTab"`
+	Widget         *Widget  `yaml:"widget"`
+	HealthKeyword  string   `yaml:"healthKeyword"`
+	Key            string   `yaml:"-"`
+	Location       string   `yaml:"location"`
+	Cluster        string   `yaml:"cluster"`
+	URL            string   `yaml:"url"`
+	Icon           string   `yaml:"icon"`
+	Title          string   `yaml:"title"`
+	Description    string   `yaml:"description"`
+	Group          string   `yaml:"group"`
+	HealthURL      string   `yaml:"healthUrl"`
+	HealthStatuses []int    `yaml:"healthStatuses"`
+	Tags           []string `yaml:"tags"`
+	Order          int      `yaml:"order"`
+	ProxyIcon      bool     `yaml:"proxyIcon"`
+	HealthDisabled bool     `yaml:"healthDisabled"`
+	HealthInsecure bool     `yaml:"healthInsecure"`
+}
+
+// Widget optionally attaches live data to a service card. Type selects the
+// integration (e.g. "customapi"); options are passed through to the client.
+type Widget struct {
+	Options map[string]any `yaml:"options"`
+	Type    string         `yaml:"type"`
+}
+
+// ProbeURL returns the URL the health prober should check for this service.
+func (s *Service) ProbeURL() string {
+	if s.HealthURL != "" {
+		return s.HealthURL
+	}
+
+	return s.URL
+}
+
+// IsHealthyStatus reports whether an HTTP status counts as healthy. With no
+// explicit healthStatuses, redirects, other 2xx/3xx and auth responses count
+// as reachable: most homelab apps answer 302→login or 401 when healthy.
+func (s *Service) IsHealthyStatus(code int) bool {
+	if len(s.HealthStatuses) > 0 {
+		return slices.Contains(s.HealthStatuses, code)
+	}
+
+	return (code >= 200 && code < 400) || code == 401 || code == 403
 }
 
 func (s *Service) GetIconURL() string {

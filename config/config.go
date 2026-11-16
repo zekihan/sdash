@@ -27,6 +27,10 @@ const (
 	defaultPollInterval       = 5 * time.Second
 	defaultCookieHashKeySize  = 64
 	defaultCookieBlockKeySize = 32
+	defaultHealthInterval     = 30 * time.Second
+	defaultHealthTimeout      = 5 * time.Second
+	defaultHealthHistory      = 90
+	maxHealthHistory          = 1000
 )
 
 var config *Config
@@ -41,10 +45,163 @@ var (
 )
 
 type Config struct {
-	OidcConfig map[string]*OidcConfig `yaml:"oidc"`
-	LogConfig  LogConfig              `yaml:"log"       env:", prefix=LOG_"`
-	WebConfig  WebConfig              `yaml:"web"       env:", prefix=WEB_"`
-	Dashboard  Dashboard              `yaml:"dashboard" env:", prefix=DASHBOARD_"`
+	OidcConfig   map[string]*OidcConfig `yaml:"oidc"`
+	Integrations IntegrationsConfig     `yaml:"integrations" env:", prefix=INTEGRATIONS_"`
+	Kubernetes   KubernetesConfig       `yaml:"kubernetes"   env:", prefix=KUBERNETES_"`
+	Proxmox      ProxmoxConfig          `yaml:"proxmox"      env:", prefix=PROXMOX_"`
+	PBS          PBSConfig              `yaml:"pbs"          env:", prefix=PBS_"`
+	TrueNAS      TrueNASConfig          `yaml:"truenas"      env:", prefix=TRUENAS_"`
+	CrowdSec     CrowdSecConfig         `yaml:"crowdsec"     env:", prefix=CROWDSEC_"`
+	Actions      ActionsConfig          `yaml:"actions"      env:", prefix=ACTIONS_"`
+	Preferences  PreferencesConfig      `yaml:"preferences"  env:", prefix=PREFERENCES_"`
+	Docker       DockerConfig           `yaml:"docker"       env:", prefix=DOCKER_"`
+	Gatus        GatusConfig            `yaml:"gatus"        env:", prefix=GATUS_"`
+	WebConfig    WebConfig              `yaml:"web"          env:", prefix=WEB_"`
+	LogConfig    LogConfig              `yaml:"log"          env:", prefix=LOG_"`
+	Weather      WeatherConfig          `yaml:"weather"      env:", prefix=WEATHER_"`
+	Health       HealthConfig           `yaml:"health"       env:", prefix=HEALTH_"`
+	Dashboard    Dashboard              `yaml:"dashboard"    env:", prefix=DASHBOARD_"`
+	System       SystemConfig           `yaml:"system"       env:", prefix=SYSTEM_"`
+}
+
+// KubernetesConfig controls the cluster widget. With no kubeconfig path the
+// in-cluster service account is used when running inside Kubernetes, then
+// ~/.kube/config for local runs.
+type KubernetesConfig struct {
+	Kubeconfig      string `yaml:"kubeconfig"      env:"KUBECONFIG"`
+	ArgocdNamespace string `yaml:"argocdNamespace" env:"ARGOCD_NAMESPACE"`
+	Enabled         bool   `yaml:"enabled"         env:"ENABLED"`
+}
+
+// ProxmoxConfig controls the optional Proxmox VE cluster widget. APIToken is
+// the full token value ("user@realm!tokenid=secret") of a read-only
+// (PVEAuditor) API token. Insecure skips TLS verification for the stock
+// self-signed node certificates.
+type ProxmoxConfig struct {
+	URL      string `yaml:"url"      env:"URL"`
+	APIToken string `yaml:"apiToken" env:"API_TOKEN"`
+	Enabled  bool   `yaml:"enabled"  env:"ENABLED"`
+	Insecure bool   `yaml:"insecure" env:"INSECURE"`
+}
+
+// TrueNASConfig controls the optional TrueNAS widget (SCALE/Core REST v2).
+type TrueNASConfig struct {
+	URL      string `yaml:"url"      env:"URL"`
+	APIKey   string `yaml:"apiKey"   env:"API_KEY"`
+	Enabled  bool   `yaml:"enabled"  env:"ENABLED"`
+	Insecure bool   `yaml:"insecure" env:"INSECURE"`
+}
+
+// PBSConfig controls the optional Proxmox Backup Server widget. APIToken is
+// the full token value ("user@realm!tokenid:secret") with Datastore.Audit.
+type PBSConfig struct {
+	URL      string `yaml:"url"      env:"URL"`
+	Node     string `yaml:"node"     env:"NODE"`
+	APIToken string `yaml:"apiToken" env:"API_TOKEN"`
+	Enabled  bool   `yaml:"enabled"  env:"ENABLED"`
+	Insecure bool   `yaml:"insecure" env:"INSECURE"`
+}
+
+// CrowdSecConfig controls the optional CrowdSec decisions widget (LAPI
+// bouncer API key).
+type CrowdSecConfig struct {
+	URL     string `yaml:"url"     env:"URL"`
+	APIKey  string `yaml:"apiKey"  env:"API_KEY"`
+	Enabled bool   `yaml:"enabled" env:"ENABLED"`
+}
+
+// ActionsConfig gates every write action (Argo sync, rollout restart,
+// Proxmox guest start, Wake-on-LAN, Home Assistant toggles). Disabled by
+// default; enabling it also needs the matching write credentials/RBAC.
+type ActionsConfig struct {
+	WakeOnLan []WakeHost `yaml:"wakeOnLan"`
+	Enabled   bool       `yaml:"enabled"   env:"ENABLED"`
+}
+
+// WakeHost is one Wake-on-LAN target.
+type WakeHost struct {
+	Name      string `yaml:"name"`
+	MAC       string `yaml:"mac"`
+	Broadcast string `yaml:"broadcast"`
+}
+
+// PreferencesConfig controls server-side preference sync. Path defaults to
+// sdash-prefs.json in the config directory; point it at writable storage.
+type PreferencesConfig struct {
+	Path    string `yaml:"path"    env:"PATH"`
+	Enabled bool   `yaml:"enabled" env:"ENABLED"`
+}
+
+// GatusConfig controls the optional Gatus status widget.
+type GatusConfig struct {
+	URL     string `yaml:"url"     env:"URL"`
+	Enabled bool   `yaml:"enabled" env:"ENABLED"`
+}
+
+// IntegrationsConfig holds per-application API credentials for the service
+// card widgets. Keys live here (or in SDS__INTEGRATIONS_* env vars), never in
+// dashboard.yaml, which is sent to browsers.
+type IntegrationsConfig struct {
+	Sonarr        IntegrationConfig `yaml:"sonarr"        env:", prefix=SONARR_"`
+	Radarr        IntegrationConfig `yaml:"radarr"        env:", prefix=RADARR_"`
+	Jellyfin      IntegrationConfig `yaml:"jellyfin"      env:", prefix=JELLYFIN_"`
+	QBittorrent   IntegrationConfig `yaml:"qbittorrent"   env:", prefix=QBITTORRENT_"`
+	Immich        IntegrationConfig `yaml:"immich"        env:", prefix=IMMICH_"`
+	Miniflux      IntegrationConfig `yaml:"miniflux"      env:", prefix=MINIFLUX_"`
+	Forgejo       IntegrationConfig `yaml:"forgejo"       env:", prefix=FORGEJO_"`
+	Semaphore     IntegrationConfig `yaml:"semaphore"     env:", prefix=SEMAPHORE_"`
+	Paperless     IntegrationConfig `yaml:"paperless"     env:", prefix=PAPERLESS_"`
+	Syncthing     IntegrationConfig `yaml:"syncthing"     env:", prefix=SYNCTHING_"`
+	HomeAssistant IntegrationConfig `yaml:"homeassistant" env:", prefix=HOMEASSISTANT_"`
+}
+
+// IntegrationConfig points at one upstream application's API. Username and
+// Password are used instead of an API key by applications with form login
+// (qBittorrent).
+type IntegrationConfig struct {
+	URL      string `yaml:"url"      env:"URL"`
+	APIKey   string `yaml:"apiKey"   env:"API_KEY"`
+	Username string `yaml:"username" env:"USERNAME"`
+	Password string `yaml:"password" env:"PASSWORD"`
+}
+
+// Ready reports whether the integration has a URL and some credential.
+func (integration IntegrationConfig) Ready() bool {
+	if integration.URL == "" {
+		return false
+	}
+
+	return integration.APIKey != "" || (integration.Username != "" && integration.Password != "")
+}
+
+// HealthConfig controls the background service prober.
+type HealthConfig struct {
+	Interval time.Duration `yaml:"interval" env:"INTERVAL"`
+	Timeout  time.Duration `yaml:"timeout"  env:"TIMEOUT"`
+	History  int           `yaml:"history"  env:"HISTORY"`
+	Enabled  bool          `yaml:"enabled"  env:"ENABLED"`
+}
+
+// SystemConfig controls the host system-stats widget endpoint.
+type SystemConfig struct {
+	Enabled bool `yaml:"enabled" env:"ENABLED"`
+}
+
+// DockerConfig controls the optional Docker containers widget. Host accepts a
+// unix socket path, a unix:/// or tcp:// URL, or empty to auto-detect the
+// default socket locations.
+type DockerConfig struct {
+	Host    string `yaml:"host"    env:"HOST"`
+	Enabled bool   `yaml:"enabled" env:"ENABLED"`
+}
+
+// WeatherConfig controls the optional Open-Meteo weather widget.
+type WeatherConfig struct {
+	Label     string  `yaml:"label"     env:"LABEL"`
+	Units     string  `yaml:"units"     env:"UNITS"`
+	Latitude  float64 `yaml:"latitude"  env:"LATITUDE"`
+	Longitude float64 `yaml:"longitude" env:"LONGITUDE"`
+	Enabled   bool    `yaml:"enabled"   env:"ENABLED"`
 }
 
 type WebConfig struct {
@@ -136,11 +293,32 @@ func GetConfigWithContext(ctx context.Context) *Config {
 			os.Exit(1) //nolint:forbidigo // Invalid watcher configuration must prevent startup.
 		}
 
+		validateWidgetConfig(ctx, cfg)
+
 		cfg.OidcConfig = processOidcConfigs(ctx, cfg.OidcConfig)
 		config = cfg
 	}
 
 	return config
+}
+
+// validateWidgetConfig bounds the health prober settings and normalizes the
+// weather units after environment overrides have been applied.
+func validateWidgetConfig(ctx context.Context, cfg *Config) {
+	if cfg.Health.Enabled {
+		if cfg.Health.Interval <= 0 || cfg.Health.Timeout <= 0 {
+			slog.ErrorContext(ctx, "Health checks require positive interval and timeout")
+			os.Exit(1) //nolint:forbidigo // Invalid prober configuration must prevent startup.
+		}
+
+		if cfg.Health.History <= 0 || cfg.Health.History > maxHealthHistory {
+			cfg.Health.History = defaultHealthHistory
+		}
+	}
+
+	if cfg.Weather.Units != "imperial" {
+		cfg.Weather.Units = "metric"
+	}
 }
 
 func processOidcConfigs(
@@ -281,6 +459,19 @@ func GetDefaultConfig() *Config {
 	cfg.Dashboard.Reload.PollInterval = defaultPollInterval
 	cfg.Dashboard.Reload.UseModTime = true
 	cfg.Dashboard.Reload.UseFsNotify = false
+	cfg.Health.Enabled = true
+	cfg.Health.Interval = defaultHealthInterval
+	cfg.Health.Timeout = defaultHealthTimeout
+	cfg.Health.History = defaultHealthHistory
+	cfg.System.Enabled = true
+	cfg.Docker.Enabled = false
+	cfg.Kubernetes.Enabled = false
+	cfg.Kubernetes.ArgocdNamespace = "argocd"
+	cfg.PBS.Node = "localhost"
+	cfg.Preferences.Enabled = true
+	cfg.Gatus.Enabled = false
+	cfg.Weather.Enabled = false
+	cfg.Weather.Units = "metric"
 
 	return cfg
 }
