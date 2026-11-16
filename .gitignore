@@ -63,6 +63,7 @@ views/*_templ.txt
 # only the placeholder is committed so `go build` works before `make web`)
 /.cache/
 web/node_modules/
+!web/dist/
 web/dist/*
 !web/dist/.gitkeep
 
