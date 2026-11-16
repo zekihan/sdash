@@ -1,12 +1,14 @@
 package appwidgets
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/zekihan/sdash/config"
+	"github.com/zekihan/sdash/config/dashboard"
 )
 
 func TestQBittorrent5LoginCookie(t *testing.T) {
@@ -154,5 +156,29 @@ func TestSemaphoreCapsRecentTasks(t *testing.T) {
 
 	if widget.Stats[0].Value != "10/10" {
 		t.Errorf("recent ok = %q, want 10/10", widget.Stats[0].Value)
+	}
+}
+
+func TestServiceWidgetsNeverEncodeNullLists(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"totalRecords":0}`))
+	}))
+	defer server.Close()
+
+	integrations := new(config.IntegrationsConfig)
+	integrations.Sonarr = integrationWith(server.URL, "key")
+
+	widgets := New(integrations).ForServices(
+		t.Context(),
+		[]*dashboard.Service{serviceWithWidget("sonarr", "sonarr")},
+	)
+
+	encoded, err := json.Marshal(widgets)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	if strings.Contains(string(encoded), "null") {
+		t.Errorf("widgets encode null lists: %s", encoded)
 	}
 }

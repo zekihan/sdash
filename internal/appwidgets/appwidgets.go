@@ -179,6 +179,8 @@ func (provider *Provider) fetchAll(
 				return
 			}
 
+			normalizeWidget(widget)
+
 			mu.Lock()
 			out[service.Key] = widget
 			mu.Unlock()
@@ -221,6 +223,26 @@ func (provider *Provider) integrationFor(widgetType string) (config.IntegrationC
 		empty := new(config.IntegrationConfig)
 
 		return *empty, false
+	}
+}
+
+// normalizeWidget replaces nil slices, which encode as JSON null, with empty
+// ones: the SPA reads .length on every list.
+func normalizeWidget(widget *Widget) {
+	if widget.Stats == nil {
+		widget.Stats = []Stat{}
+	}
+
+	if widget.Lines == nil {
+		widget.Lines = []string{}
+	}
+
+	if widget.Controls == nil {
+		widget.Controls = []Control{}
+	}
+
+	if widget.Sensors == nil {
+		widget.Sensors = []Sensor{}
 	}
 }
 
