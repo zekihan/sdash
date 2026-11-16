@@ -68,3 +68,6 @@ web/dist/*
 
 # Server-synced dashboard preferences (local runtime state)
 sdash-prefs.json
+
+# TypeScript build info
+web/*.tsbuildinfo
