@@ -5,69 +5,107 @@ This file provides guidance to AI Agents when working with code in this reposito
 ## Commands
 
 ```sh
-# Format, generate templ views, and tidy modules
-make tidy
+# Build the frontend into web/dist (embedded by the Go binary)
+make web
 
-# Build binary for local platform (via goreleaser snapshot)
+# Build binary for local platform (web + goreleaser snapshot)
 make build
 
-# Run all tests (uses scripts/go_test.sh which sets CONFIG_DIR and DASHBOARD_CONFIG_DIR)
+# Run the server with the checked-in dev config on :33000
+make dev
+
+# Vite dev server on :5173 (proxies /api to :33000; run `make dev` alongside)
+make web/dev
+
+# Run all tests (scripts/go_test.sh sets CONFIG_DIR and DASHBOARD_CONFIG_DIR)
 make test
 
 # Run a single test package
 ./scripts/go_test.sh -v -run TestName ./config/dashboard/...
 
-# Run linter
+# Format + typecheck, linter, built binary
+make tidy
 make lint
-
-# Run the built binary
 make run
 ```
 
-The `tidy` target must be run before building if `.templ` files changed — it regenerates the `*_templ.go` files via `templ generate`.
+`web/dist` is generated and gitignored except a `.gitkeep` placeholder, so
+`go build`/`go test` work before the first `make web`; without a frontend
+build the server answers `/` with a "run make web" notice while the API works.
 
 ## Architecture
 
-SDash is a Go web server that renders a simple service dashboard from YAML config. The stack is Go + [templ](https://templ.guide/) (typed HTML templates) + htmx + TailwindCSS.
+SDash is a single Go binary serving a homelab dashboard: JSON API + SSE live
+updates + an embedded React/TypeScript SPA (Vite + Tailwind, in `web/`).
 
 ### Two-config system
 
-**`config.yaml`** (`config/config.go`) — app-level config: web server settings, log level, OIDC providers, dashboard reload behavior. Loaded once at startup as a singleton. Env vars override YAML values using the prefix `SDS__` (e.g. `SDS__WEB_PORT`). OIDC providers are keyed by name; each gets overrides via `SDS__OIDC_<NAME>_<FIELD>`.
+**`config.yaml`** (`config/config.go`) — app config: web server, logging, OIDC
+providers, dashboard reload, and the `health`/`system`/`docker`/`weather`/
+`kubernetes`/`proxmox`/`truenas`/`gatus`/`integrations` widget sections. Loaded once at startup as a singleton. Env overrides use the
+`SDS__` prefix (e.g. `SDS__WEB_PORT`, `SDS__HEALTH_INTERVAL`); OIDC providers
+are keyed by name (`SDS__OIDC_<NAME>_<FIELD>`).
 
-**`dashboard.yaml`** (`config/dashboard/dashboard.go`) — the services and groups displayed on the dashboard. Loaded separately as its own singleton with an RWMutex for hot-reload. Supports two reload strategies: mod-time polling (default) or fsnotify, configured under `dashboard.reload` in `config.yaml`. Env vars: `DASHBOARD_CONFIG_PATH` or `DASHBOARD_CONFIG_DIR`.
+**`dashboard.yaml`** (`config/dashboard/`) — services, groups and `settings`
+(title, search engine, default theme/accent, background). Its own singleton
+behind an RWMutex with hot-reload (fsnotify or mod-time polling, from
+`dashboard.reload`). `OnReload` listeners (SSE push, prober targets) fire after
+each successful reload. Env: `DASHBOARD_CONFIG_PATH` or `DASHBOARD_CONFIG_DIR`.
+Schema is backward compatible with 1.x files; `postProcessConfig()` assigns
+unkeyed services to `others`, creates missing groups, sorts per
+`orderServicesVia`/`orderGroupsVia`, and fills settings defaults.
 
-### Request flow
+### Backend packages
 
-`main.go` builds two middleware chains via `justinas/alice`:
-- `stdChain`: recovery + structured request logging (applied to all routes)
-- `authChain`: cookie-based auth gate (applied to protected routes)
+- `internal/server` — routes, DTOs, auth gate (401 JSON for APIs), SSE hub,
+  SPA/static serving, plus the OIDC login/callback handlers.
+- `internal/health` — background prober for every service (`healthUrl`,
+  `healthKeyword`, `healthStatuses`, `healthInsecure`, `healthDisabled`);
+  bounded per-service history feeds status/uptime/sparklines.
+- `internal/systeminfo` — host CPU/mem/disk/load from `/proc` (Linux; degrades
+  to `available: false` elsewhere).
+- `internal/dockerinfo` — read-only Docker Engine API client (unix socket or
+  TCP), no SDK dependency.
+- `internal/weather` — Open-Meteo client with a 15-minute server-side cache.
+- `internal/kubeinfo` — dependency-free Kubernetes REST summary (nodes,
+  pods, deployments, Argo CD applications); in-cluster SA or kubeconfig
+  (token or client-cert; exec plugins unsupported).
+- `internal/gatusinfo` — Gatus `/api/v1/endpoints/statuses` reducer.
+- `internal/proxmoxinfo` — Proxmox VE `/cluster/resources` summary (nodes,
+  guests, shared storage deduped) with a PVEAuditor API token.
+- `internal/truenasinfo` — TrueNAS REST v2 summary (system info, pools,
+  undismissed alerts) with a Bearer API key.
+- `internal/appwidgets` — Sonarr/Radarr/Jellyfin live card data; keys from
+  `integrations` config only, results cached 30s and shared per widget type.
+- `internal/icon` — hardened icon proxy (public-IP-only, re-encodes to PNG,
+  bounded cache/concurrency/rate). Kept from 1.x; see README before touching.
+- `session/auth` — OIDC provider init; auth is on only when ≥1 provider is
+  enabled. Sessions are go-commons secure cookies.
+- `requestlog` — credential-safe access logs (no query strings/headers).
 
-Routes:
-- `/` → `viewroutes.Root` (redirects to `/dashboard`)
-- `/dashboard`, `/dashboard/group/{group}` → authenticated view routes
-- `/api/search` → fuzzy search over services (authenticated)
-- `/api/proxy/icon` → proxies external icon URLs through the server
-- `/login`, `/login/{oidc}`, `/user/oauth2/{oidc}/callback` → OIDC auth flow
-- `/api/ping`, `/api/health` — unauthenticated health endpoints
+### API surface
 
-### Dashboard data model
+`/api/me`, `/api/dashboard`, `/api/health/services`, `/api/system`,
+`/api/docker`, `/api/weather`, `/api/kubernetes`, `/api/proxmox`,
+`/api/truenas`, `/api/gatus`,
+`/api/service-widgets`, `/api/events` (SSE), `/api/proxy/icon`,
+`POST /api/logout`; public `/api/ping`, `/api/health`; OIDC at
+`/login`, `/login/{oidc}`, `/user/oauth2/{oidc}/callback`. Everything else
+serves the SPA (`web/embed.go` embeds `web/dist`).
 
-`dashboard.Config` holds `Services` (map) and `Groups` (map). `postProcessConfig()` runs after load to:
-1. Assign unkeyed services to the `others` group and create missing groups on the fly
-2. Sort services and groups into ordered lists (`ServicesList`, `GroupList`) using configurable `Ordering` (by title, key, or explicit order field)
+### Frontend
 
-### Views (templ)
-
-Templates live in `views/*.templ`. Editing a `.templ` file requires `templ generate` (run via `make tidy`) to regenerate the corresponding `*_templ.go` file. Both the `.templ` source and the generated Go file are committed.
-
-### Auth
-
-`session/auth/auth.go` initializes OIDC providers from config at startup. Auth is enabled only if at least one OIDC provider is configured and enabled. When disabled, the `authChain` middleware is a no-op and all routes are public.
-
-### Search
-
-`search/fuzzy.go` wraps `sahilm/fuzzy` to search across multiple service fields (title, key, location, cluster, tags) and group fields. Which fields are searched is configured in `dashboard.yaml` under `search.from`.
+`web/src`: `App.tsx` orchestrates loading/SSE/polling/prefs; components in
+`web/src/components`, helpers in `web/src/lib`. Client prefs (theme, accent,
+density, layout, pins, recents) live in localStorage (`sdash:prefs:v1`) —
+save failures must surface as a toast, never silently drop. Search is
+client-side fuzzy matching over the `/api/dashboard` payload. Theming is CSS
+variables (`data-theme`/`data-accent` on `<html>`, tokens in `index.css`)
+mapped into Tailwind via `@theme inline`.
 
 ### Build
 
-Builds use goreleaser. The Makefile's `build/local` target runs `goreleaser build --snapshot --single-target` and outputs to `dist/`. CSS is generated by TailwindCSS from `build/tailwind/input.css` → `assets/css/tailwind.css` as a goreleaser pre-hook.
+Goreleaser builds binaries; its before-hook runs `npm --prefix web run build`
+(deps installed via `.github/scripts/install_build_deps.sh` = `npm ci`, the
+only approved install script is esbuild's). The Dockerfile packages prepared
+`dist/` binaries into distroless as user 25000 — it runs no toolchain itself.

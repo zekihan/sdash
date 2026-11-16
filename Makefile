@@ -6,21 +6,36 @@ ARCH_INFO := $(shell uname -m | sed 's/x86_64/amd64/')
 TMP_DIR := ./tmp
 GO_EXECUTABLE := go
 
-# build: build the binary
+## web: install frontend dependencies and build the web UI into web/dist
+.PHONY: web
+web:
+	npm --prefix web ci
+	npm --prefix web run build
+
+## web/dev: run the Vite dev server (proxies /api to the Go server on :33000)
+.PHONY: web/dev
+web/dev:
+	npm --prefix web run dev
+
+# build: build the binary (frontend included) for the local platform
 .PHONY: build
-build: tidy build/local
+build: web tidy build/local
 
 .PHONY: run
 run: build
 	./dist/${BINARY_NAME}_${OS_INFO}_${ARCH_INFO}/${BINARY_NAME}
 
+## dev: run the Go server with the checked-in dev config (build web first)
+.PHONY: dev
+dev: web
+	${GO_EXECUTABLE} run .
+
 ## tidy: format code and tidy modfile
 .PHONY: tidy
 tidy:
-	./build/bin/templ generate -path ./views
-	./build/bin/templ fmt -prettier-required=true -prettier-command="./build/node/node_modules/.bin/prettier --use-tabs --stdin-filepath \$$TEMPL_PRETTIER_FILENAME" ./views
 	${GO_EXECUTABLE} fmt ./...
 	${GO_EXECUTABLE} mod tidy -v
+	@test -d web/node_modules && npm --prefix web run typecheck || echo "skip: web typecheck (run 'make web' first)"
 
 ## lint: run linter
 .PHONY: lint
@@ -40,13 +55,13 @@ audit: tidy
 
 ## test: run all tests
 .PHONY: test
-test: tidy
+test:
 	./scripts/go_test.sh -v -buildvcs -vet=all ./...
 	./scripts/go_test.sh -v -buildvcs -vet=all -race ./...
 
 ## test/cover: run all tests and display coverage
 .PHONY: test/cover
-test/cover: tidy
+test/cover:
 	mkdir -p ${TMP_DIR}
 	./scripts/go_test.sh -v -buildvcs -vet=all -coverprofile=${TMP_DIR}/coverage.out ./...
 	${GO_EXECUTABLE} tool cover -html=${TMP_DIR}/coverage.out
@@ -58,18 +73,12 @@ build/local:
 
 # build/all: build the binary for all platforms
 .PHONY: build/all
-build/all:
+build/all: web
 	goreleaser build --clean --id all --snapshot
 
-# build/assets: prepare production CSS before packaging a Docker image
-.PHONY: build/assets
-build/assets:
-	./build/bin/tailwindcss --input ./build/tailwind/input.css --output assets/css/tailwind.css
-	NODE_ENV=production NODE_PATH="$(CURDIR)/build/node/node_modules" ./build/node/node_modules/.bin/postcss --config ./build/csspostprocess/postcss.config.js assets/css/scroll.css assets/css/tailwind.css --base assets/css --dir assets/css --ext .min.css
-
-# build/docker: build the binary for docker platforms
+# build/docker: build the binaries the Docker image packages
 .PHONY: build/docker
-build/docker:
+build/docker: web
 	goreleaser build --clean --id docker --snapshot
 
 # build/release: build the binary for release
@@ -78,17 +87,17 @@ build/release: build/release/all
 
 # build/release/all: build the binary for release
 .PHONY: build/release/all
-build/release/all:
+build/release/all: web
 	goreleaser build --clean --id all --skip=validate
 
-# build/release: build the binary for release
+# build/release/docker: build the docker binaries for release
 .PHONY: build/release/docker
-build/release/docker:
+build/release/docker: web
 	goreleaser build --clean --id docker --skip=validate
 
 # release: prepare local release artifacts without publishing
 .PHONY: release
-release:
+release: web
 	goreleaser release --clean --skip=publish,announce
 
 # new_version: create a new version

@@ -59,7 +59,6 @@ jobs:
         else
           RELEASE_VERSION=$(cat VERSION) goreleaser build --clean --id docker --snapshot
         fi
-        make build/assets
       node-version: 24.22.2
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}

@@ -1,4 +1,5 @@
-# Build binaries and CSS with the verified build scripts before packaging.
+# Build binaries with goreleaser first (make build/docker); the web UI is
+# embedded in the binary, so the image needs nothing else.
 FROM --platform=$BUILDPLATFORM busybox:1.38.0@sha256:a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4 AS builder
 
 ARG TARGETPLATFORM
@@ -23,7 +24,6 @@ FROM gcr.io/distroless/static-debian12:latest@sha256:d75cdd72874d4790092fcb1b058
 
 WORKDIR /
 
-COPY ./assets ./assets
 COPY --from=builder /usr/bin/sdash /usr/bin/sdash
 
 USER 25000:25000

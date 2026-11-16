@@ -29,8 +29,6 @@ config.yaml
 docker-compose.yaml
 Dockerfile
 renovate.json
-views/*_templ.go
-views/*_templ.txt
 
 # VCS, CI and editor metadata
 .git
@@ -38,9 +36,9 @@ views/*_templ.txt
 .idea
 .vscode
 
-# Local build tooling (tailwind/templ binaries, node_modules); the image only
-# needs dist/ from goreleaser and assets/
-build/
+# Frontend sources and tooling; the image only needs dist/ from goreleaser
+# (the built UI is embedded in the binary)
+web/
 node_modules/
 
 # Local secrets
