@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -23,8 +24,12 @@ import (
 )
 
 const (
-	typeSonarr = "sonarr"
-	typeRadarr = "radarr"
+	typeSonarr   = "sonarr"
+	typeRadarr   = "radarr"
+	typeImmich   = "immich"
+	typeJellyfin = "jellyfin"
+
+	semaphoreRecentTasks = 10
 
 	defaultTimeout   = 5 * time.Second
 	cacheTTL         = 30 * time.Second
@@ -114,7 +119,7 @@ func (provider *Provider) Enabled() bool {
 		}
 	}
 
-	return false
+	return provider.integrations.QBittorrent.URL != ""
 }
 
 // ForServices returns widget data keyed by service key for every service
@@ -166,6 +171,11 @@ func (provider *Provider) fetchAll(
 		waitGroup.Go(func() {
 			widget, err := provider.fetchWidget(ctx, service, integration)
 			if err != nil {
+				slog.WarnContext(ctx, "Widget fetch failed",
+					slog.String("service", service.Key),
+					slog.String("type", service.Widget.Type),
+					slog.Any("error", err))
+
 				return
 			}
 
@@ -188,11 +198,12 @@ func (provider *Provider) integrationFor(widgetType string) (config.IntegrationC
 		return integrations.Sonarr, integrations.Sonarr.Ready()
 	case typeRadarr:
 		return integrations.Radarr, integrations.Radarr.Ready()
-	case "jellyfin":
+	case typeJellyfin:
 		return integrations.Jellyfin, integrations.Jellyfin.Ready()
 	case "qbittorrent":
-		return integrations.QBittorrent, integrations.QBittorrent.Ready()
-	case "immich":
+		// Logging in is optional: qBittorrent can bypass auth for trusted subnets.
+		return integrations.QBittorrent, integrations.QBittorrent.URL != ""
+	case typeImmich:
 		return integrations.Immich, integrations.Immich.Ready()
 	case "miniflux":
 		return integrations.Miniflux, integrations.Miniflux.Ready()
@@ -364,7 +375,10 @@ func (provider *Provider) getJSON(
 	req.Header.Set("X-Api-Key", integration.APIKey)
 	req.Header.Set("X-Emby-Token", integration.APIKey)
 	req.Header.Set("X-Auth-Token", integration.APIKey)
-	req.Header.Set("Authorization", "Bearer "+integration.APIKey)
+
+	if authorization := provider.authorizationFor(&integration); authorization != "" {
+		req.Header.Set("Authorization", authorization)
+	}
 
 	resp, err := provider.httpClient.Do(req)
 	if err != nil {
@@ -387,6 +401,22 @@ func (provider *Provider) getJSON(
 	}
 
 	return nil
+}
+
+// authorizationFor returns the Authorization header for the shared GET path.
+// Immich rejects a Bearer API key as an invalid session token, and Jellyfin 12
+// accepts API keys only in its MediaBrowser scheme.
+func (provider *Provider) authorizationFor(integration *config.IntegrationConfig) string {
+	switch integration.URL {
+	case "":
+		return "Bearer " + integration.APIKey
+	case provider.integrations.Immich.URL:
+		return ""
+	case provider.integrations.Jellyfin.URL:
+		return `MediaBrowser Token="` + integration.APIKey + `"`
+	default:
+		return "Bearer " + integration.APIKey
+	}
 }
 
 func decodeJSON(content []byte, out any) error {
@@ -436,7 +466,9 @@ func (provider *Provider) doGetJSON(
 	req.Header.Set("Accept", "application/json")
 
 	for name, value := range headers {
-		req.Header.Set(name, value)
+		if value != "" {
+			req.Header.Set(name, value)
+		}
 	}
 
 	resp, err := provider.httpClient.Do(req)
@@ -529,7 +561,9 @@ func (provider *Provider) doPost(
 	req.Header.Set("Content-Type", contentType)
 
 	for name, value := range headers {
-		req.Header.Set(name, value)
+		if value != "" {
+			req.Header.Set(name, value)
+		}
 	}
 
 	resp, err := provider.httpClient.Do(req)

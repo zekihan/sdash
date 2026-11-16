@@ -284,6 +284,10 @@ func (provider *Provider) fetchImage(
 	req.Header.Set("X-Api-Key", integration.APIKey)
 	req.Header.Set("X-Emby-Token", integration.APIKey)
 
+	if authorization := provider.authorizationFor(&integration); authorization != "" {
+		req.Header.Set("Authorization", authorization)
+	}
+
 	resp, err := provider.httpClient.Do(req)
 	if err != nil {
 		return nil, "", fmt.Errorf("%w: %w", ErrUnavailable, err)

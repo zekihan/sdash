@@ -58,7 +58,7 @@ prefix (e.g. `SDS__WEB_PORT=8080`, `SDS__HEALTH_INTERVAL=15s`,
 | `crowdsec` | CrowdSec bans widget: `enabled`, `url` (LAPI), `apiKey` (bouncer key) |
 | `actions` | write actions master switch: `enabled`, `wakeOnLan` hosts (name/mac/broadcast) |
 | `preferences` | server-side preference sync: `enabled`, `path` |
-| `integrations` | widget API credentials: `sonarr`/`radarr`/`jellyfin`/`qbittorrent` (username+password)/`immich`/`miniflux`/`forgejo`/`semaphore`/`paperless`/`syncthing`/`homeassistant`, each with `url` + key |
+| `integrations` | widget API credentials: `sonarr`/`radarr`/`jellyfin`/`qbittorrent` (username+password, optional when its WebUI bypasses auth for the dashboard)/`immich`/`miniflux`/`forgejo`/`semaphore`/`paperless`/`syncthing`/`homeassistant`, each with `url` + key |
 | `oidc` | sign-in providers keyed by name (`clientId`, `clientSecret`, `discoveryEndpoint`, `enabled`, `default`) |
 
 `CONFIG_PATH` / `CONFIG_DIR` select the file. To use the Docker widget, mount

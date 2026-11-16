@@ -103,6 +103,10 @@ func (provider *Provider) qbitLogin(
 	ctx context.Context,
 	integration config.IntegrationConfig,
 ) (string, error) {
+	if integration.Username == "" && integration.Password == "" {
+		return "", nil
+	}
+
 	reqCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
 
@@ -133,12 +137,13 @@ func (provider *Provider) qbitLogin(
 	_, copyErr := io.Copy(io.Discard, io.LimitReader(resp.Body, maxResponseBytes))
 	_ = copyErr
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return "", fmt.Errorf("%w: qBittorrent login returned %s", ErrUnavailable, resp.Status)
 	}
 
+	// QBittorrent 5 names the session cookie QBT_SID_<port> instead of SID.
 	for _, cookie := range resp.Cookies() {
-		if cookie.Name == "SID" {
+		if cookie.Name == "SID" || strings.HasPrefix(cookie.Name, "QBT_SID") {
 			return cookie.Name + "=" + cookie.Value, nil
 		}
 	}
@@ -303,6 +308,11 @@ func (provider *Provider) fetchSemaphore(
 	err = provider.getJSON(ctx, integration, path, &tasks)
 	if err != nil {
 		return nil, err
+	}
+
+	// Semaphore ignores the limit parameter and returns its whole history.
+	if len(tasks) > semaphoreRecentTasks {
+		tasks = tasks[:semaphoreRecentTasks]
 	}
 
 	if len(tasks) == 0 {
