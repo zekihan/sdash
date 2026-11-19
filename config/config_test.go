@@ -298,6 +298,9 @@ func TestGetConfigFromFileRequiresMapping(t *testing.T) {
 		{name: "sequence", content: "[]\n", valid: false},
 		{name: "explicit empty mapping", content: "{}\n", valid: true},
 		{name: "mapping", content: "web:\n  port: 1234\n", valid: true},
+		{name: "explicit document markers", content: "---\n{}\n...\n", valid: true},
+		{name: "extra mapping", content: "{}\n---\nweb:\n  port: 1234\n", valid: false},
+		{name: "malformed trailing document", content: "{}\n---\nweb: [\n", valid: false},
 	} {
 		t.Run(fixture.name, func(t *testing.T) {
 			configPath := filepath.Join(t.TempDir(), "config.yaml")
