@@ -18,6 +18,7 @@ import type {
   Weather,
 } from "./types";
 import { ApiError, api, subscribeEvents } from "./lib/api";
+import { createWidgetLoader } from "./lib/widgetLoader";
 import {
   applyTheme,
   loadPrefs,
@@ -71,6 +72,21 @@ export default function App() {
   const [calendar, setCalendar] = useState<CalendarData | null>(null);
   const [mediaRail, setMediaRail] = useState<MediaRailType | null>(null);
   const [serviceWidgets, setServiceWidgets] = useState<Record<string, ServiceWidget>>({});
+  const [loadServiceWidgets] = useState(() => createWidgetLoader(api.serviceWidgets, setServiceWidgets));
+  const [widgetSources] = useState(() => [
+    { feature: "system", intervalMs: 5000, load: createWidgetLoader(api.system, setSystem) },
+    { feature: "docker", intervalMs: 15000, load: createWidgetLoader(api.docker, setDocker) },
+    { feature: "weather", intervalMs: 600000, load: createWidgetLoader(api.weather, setWeather) },
+    { feature: "kubernetes", intervalMs: 20000, load: createWidgetLoader(api.kubernetes, setKube) },
+    { feature: "proxmox", intervalMs: 30000, load: createWidgetLoader(api.proxmox, setProxmox) },
+    { feature: "truenas", intervalMs: 60000, load: createWidgetLoader(api.truenas, setTruenas) },
+    { feature: "pbs", intervalMs: 60000, load: createWidgetLoader(api.pbs, setPbs) },
+    { feature: "crowdsec", intervalMs: 30000, load: createWidgetLoader(api.crowdsec, setCrowdsec) },
+    { feature: "gatus", intervalMs: 30000, load: createWidgetLoader(api.gatus, setGatusData) },
+    { feature: "widgets", intervalMs: 30000, load: loadServiceWidgets },
+    { feature: "widgets", intervalMs: 300000, load: createWidgetLoader(api.calendar, setCalendar) },
+    { feature: "widgets", intervalMs: 600000, load: createWidgetLoader(api.mediaRail, setMediaRail) },
+  ] as const);
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs());
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -132,21 +148,8 @@ export default function App() {
   }, []);
 
   const loadWidgets = useCallback(async (features: Dashboard["features"]) => {
-    const jobs: Promise<unknown>[] = [];
-    if (features.system) jobs.push(api.system().then(setSystem).catch(() => undefined));
-    if (features.docker) jobs.push(api.docker().then(setDocker).catch(() => undefined));
-    if (features.weather) jobs.push(api.weather().then(setWeather).catch(() => undefined));
-    if (features.kubernetes) jobs.push(api.kubernetes().then(setKube).catch(() => undefined));
-    if (features.proxmox) jobs.push(api.proxmox().then(setProxmox).catch(() => undefined));
-    if (features.truenas) jobs.push(api.truenas().then(setTruenas).catch(() => undefined));
-    if (features.pbs) jobs.push(api.pbs().then(setPbs).catch(() => undefined));
-    if (features.crowdsec) jobs.push(api.crowdsec().then(setCrowdsec).catch(() => undefined));
-    if (features.gatus) jobs.push(api.gatus().then(setGatusData).catch(() => undefined));
-    if (features.widgets) jobs.push(api.serviceWidgets().then(setServiceWidgets).catch(() => undefined));
-    if (features.widgets) jobs.push(api.calendar().then(setCalendar).catch(() => undefined));
-    if (features.widgets) jobs.push(api.mediaRail().then(setMediaRail).catch(() => undefined));
-    await Promise.allSettled(jobs);
-  }, []);
+    await Promise.all(widgetSources.filter(({ feature }) => features[feature]).map(({ load }) => load()));
+  }, [widgetSources]);
 
   useEffect(() => {
     let cancelled = false;
@@ -223,21 +226,11 @@ export default function App() {
   useEffect(() => {
     if (state !== "ready" || !dashboard) return;
     const { features } = dashboard;
-    const timers: number[] = [];
-    if (features.system) timers.push(window.setInterval(() => api.system().then(setSystem).catch(() => undefined), 5000));
-    if (features.docker) timers.push(window.setInterval(() => api.docker().then(setDocker).catch(() => undefined), 15000));
-    if (features.kubernetes) timers.push(window.setInterval(() => api.kubernetes().then(setKube).catch(() => undefined), 20000));
-    if (features.proxmox) timers.push(window.setInterval(() => api.proxmox().then(setProxmox).catch(() => undefined), 30000));
-    if (features.truenas) timers.push(window.setInterval(() => api.truenas().then(setTruenas).catch(() => undefined), 60000));
-    if (features.pbs) timers.push(window.setInterval(() => api.pbs().then(setPbs).catch(() => undefined), 60000));
-    if (features.crowdsec) timers.push(window.setInterval(() => api.crowdsec().then(setCrowdsec).catch(() => undefined), 30000));
-    if (features.gatus) timers.push(window.setInterval(() => api.gatus().then(setGatusData).catch(() => undefined), 30000));
-    if (features.widgets) timers.push(window.setInterval(() => api.serviceWidgets().then(setServiceWidgets).catch(() => undefined), 30000));
-    if (features.widgets) timers.push(window.setInterval(() => api.calendar().then(setCalendar).catch(() => undefined), 300000));
-    if (features.widgets) timers.push(window.setInterval(() => api.mediaRail().then(setMediaRail).catch(() => undefined), 600000));
-    if (features.weather) timers.push(window.setInterval(() => api.weather().then(setWeather).catch(() => undefined), 600000));
-    return () => timers.forEach((t) => window.clearInterval(t));
-  }, [state, dashboard]);
+    const timers = widgetSources
+      .filter(({ feature }) => features[feature])
+      .map(({ intervalMs, load }) => window.setInterval(() => void load(), intervalMs));
+    return () => timers.forEach((timer) => window.clearInterval(timer));
+  }, [state, dashboard, widgetSources]);
 
   // Follow OS theme changes while theme = system.
   useEffect(() => {
@@ -401,12 +394,10 @@ export default function App() {
         `Toggled ${label}`,
         () => api.action("/api/actions/homeassistant", { entityId }),
         () => {
-          window.setTimeout(() => {
-            api.serviceWidgets().then(setServiceWidgets).catch(() => undefined);
-          }, 900);
+          window.setTimeout(() => void loadServiceWidgets(), 900);
         },
       ),
-    [runAction],
+    [loadServiceWidgets, runAction],
   );
 
   const logout = useCallback(async () => {
