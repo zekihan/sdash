@@ -68,10 +68,12 @@ func (srv *Server) handleArgoSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	request := new(argoSyncRequest)
-	if !decodeAction(w, r, request) || request.App == "" {
-		if request.App == "" {
-			writeError(w, http.StatusBadRequest, "app is required")
-		}
+	if !decodeAction(w, r, request) {
+		return
+	}
+
+	if request.App == "" {
+		writeError(w, http.StatusBadRequest, "app is required")
 
 		return
 	}
