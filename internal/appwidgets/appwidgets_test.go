@@ -1,6 +1,7 @@
 package appwidgets
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -77,5 +78,56 @@ func TestArrAndJellyfinWidgets(t *testing.T) {
 
 	if _, present := widgets["radarr"]; present {
 		t.Error("radarr widget present without configuration")
+	}
+}
+
+func TestCanceledRefreshDoesNotPopulateWidgetCaches(t *testing.T) {
+	mux := http.NewServeMux()
+	for _, path := range []string{"/sonarr/api/v3/queue", "/sonarr/api/v3/wanted/missing"} {
+		mux.HandleFunc(path, func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`{"totalRecords":1}`))
+		})
+	}
+
+	for _, path := range []string{"/sonarr/api/v3/calendar", "/api/memories"} {
+		mux.HandleFunc(path, func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`[]`))
+		})
+	}
+
+	upstream := httptest.NewServer(mux)
+	defer upstream.Close()
+
+	integrations := new(config.IntegrationsConfig)
+	integrations.Sonarr = integrationWith(upstream.URL+"/sonarr", "key")
+	integrations.Immich = integrationWith(upstream.URL, "key")
+	provider := New(integrations)
+	services := []*dashboard.Service{serviceWithWidget("sonarr", typeSonarr)}
+
+	checks := map[string]func(context.Context) bool{
+		"service widgets": func(ctx context.Context) bool {
+			return provider.ForServices(ctx, services)["sonarr"] != nil
+		},
+		"calendar":   func(ctx context.Context) bool { return provider.Calendar(ctx).Available },
+		"media rail": func(ctx context.Context) bool { return provider.MediaRail(ctx).Available },
+	}
+
+	for name, available := range checks {
+		t.Run(name, func(t *testing.T) {
+			canceled, cancel := context.WithCancel(t.Context())
+			cancel()
+
+			if available(canceled) {
+				t.Fatal("canceled refresh reported data from an empty cache")
+			}
+
+			if !available(t.Context()) {
+				t.Fatal("uncanceled refresh could not load data after a canceled refresh")
+			}
+
+			if !available(canceled) {
+				t.Fatal("uncanceled refresh did not populate the cache")
+			}
+		})
 	}
 }
