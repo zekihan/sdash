@@ -99,17 +99,10 @@ func run() error {
 	httpServer.ReadHeaderTimeout = readHeaderTimeout
 	httpServer.IdleTimeout = idleTimeout
 
-	go shutdownOnSignal(ctx, httpServer)
-
 	slog.InfoContext(ctx, "Listening on http://"+addr,
 		slog.String("baseUrl", cfg.WebConfig.BaseURL))
 
-	err = httpServer.ListenAndServe()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("listen and serve: %w", err)
-	}
-
-	return nil
+	return serveWithShutdown(ctx, httpServer.ListenAndServe, httpServer.Shutdown)
 }
 
 // buildDeps wires the optional widget clients from cfg. Disabled or
@@ -190,16 +183,35 @@ func preferencesPath(cfg *config.Config) string {
 	return filepath.Join(dir, "sdash-prefs.json")
 }
 
-func shutdownOnSignal(ctx context.Context, httpServer *http.Server) {
-	<-ctx.Done()
+func serveWithShutdown(
+	ctx context.Context,
+	serve func() error,
+	shutdown func(context.Context) error,
+) error {
+	shutdownDone := make(chan struct{})
+	stopShutdown := context.AfterFunc(ctx, func() {
+		defer close(shutdownDone)
 
-	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
-	defer cancel()
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
+		defer cancel()
 
-	err := httpServer.Shutdown(shutdownCtx)
-	if err != nil {
-		slog.ErrorContext(ctx, "Graceful shutdown failed", slog.Any("error", err))
+		err := shutdown(shutdownCtx)
+		if err != nil {
+			slog.ErrorContext(ctx, "Graceful shutdown failed", slog.Any("error", err))
+		}
+	})
+
+	err := serve()
+	// Serve returns as soon as Shutdown closes the listener, before requests drain.
+	if !stopShutdown() {
+		<-shutdownDone
 	}
+
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("listen and serve: %w", err)
+	}
+
+	return nil
 }
 
 func listenerAddress(host string, port int) string {

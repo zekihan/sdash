@@ -1,9 +1,153 @@
 package main
 
 import (
+	"bufio"
+	"context"
+	"errors"
+	"io"
 	"net"
+	"net/http"
 	"testing"
+	"testing/synctest"
 )
+
+func TestServeWithShutdownDrainsActiveRequest(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		serverConn, clientConn := net.Pipe()
+		defer clientConn.Close()
+		defer serverConn.Close()
+
+		listener := &pipeListener{conn: serverConn, closed: make(chan struct{})}
+
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+
+		releaseCtx, releaseHandler := context.WithCancel(t.Context())
+		defer releaseHandler()
+
+		handlerStarted := make(chan struct{})
+		httpServer := new(http.Server)
+		httpServer.ReadHeaderTimeout = readHeaderTimeout
+		httpServer.Handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			close(handlerStarted)
+			<-releaseCtx.Done()
+			w.WriteHeader(http.StatusNoContent)
+		})
+
+		shutdownDone := make(chan struct{})
+		shutdown := func(ctx context.Context) error {
+			defer close(shutdownDone)
+
+			return httpServer.Shutdown(ctx)
+		}
+		done := make(chan struct{})
+
+		var serveErr error
+
+		go func() {
+			defer close(done)
+
+			serveErr = serveWithShutdown(
+				ctx,
+				func() error { return httpServer.Serve(listener) },
+				shutdown,
+			)
+		}()
+
+		_, err := io.WriteString(
+			clientConn,
+			"GET / HTTP/1.1\r\nHost: dashboard.example\r\nConnection: close\r\n\r\n",
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		<-handlerStarted
+
+		cancel()
+		synctest.Wait()
+
+		select {
+		case <-listener.closed:
+		default:
+			t.Error("shutdown did not stop accepting connections")
+		}
+
+		select {
+		case <-done:
+			t.Error("server returned before the active request finished")
+		default:
+		}
+
+		releaseHandler()
+
+		response, err := http.ReadResponse(bufio.NewReader(clientConn), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer response.Body.Close()
+
+		if response.StatusCode != http.StatusNoContent {
+			t.Errorf("status = %d, want %d", response.StatusCode, http.StatusNoContent)
+		}
+
+		<-done
+		<-shutdownDone
+
+		if serveErr != nil {
+			t.Errorf("serveWithShutdown: %v", serveErr)
+		}
+	})
+}
+
+func TestServeWithShutdownReturnsListenError(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+
+		err := serveWithShutdown(
+			ctx,
+			func() error { return net.ErrClosed },
+			func(context.Context) error {
+				t.Error("shutdown ran after serving failed")
+
+				return nil
+			},
+		)
+		if !errors.Is(err, net.ErrClosed) {
+			t.Errorf("serveWithShutdown = %v, want %v", err, net.ErrClosed)
+		}
+
+		cancel()
+		synctest.Wait()
+	})
+}
+
+type pipeListener struct {
+	conn   net.Conn
+	closed chan struct{}
+}
+
+func (listener *pipeListener) Accept() (net.Conn, error) {
+	if listener.conn != nil {
+		conn := listener.conn
+		listener.conn = nil
+
+		return conn, nil
+	}
+
+	<-listener.closed
+
+	return nil, net.ErrClosed
+}
+
+func (listener *pipeListener) Close() error {
+	close(listener.closed)
+
+	return nil
+}
+
+func (*pipeListener) Addr() net.Addr { return new(net.TCPAddr) }
 
 func TestListenerAddress(t *testing.T) {
 	tests := map[string]struct {
