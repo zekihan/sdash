@@ -3,6 +3,7 @@ package dashboard
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -146,6 +147,14 @@ func (cfg *Config) validateEntries() error {
 	for key, service := range cfg.Services {
 		if service == nil {
 			return fmt.Errorf("service %q: %w", key, ErrNullEntry)
+		}
+
+		if service.Widget != nil {
+			// The dashboard API includes these YAML values in a JSON response.
+			_, err := json.Marshal(service.Widget.Options)
+			if err != nil {
+				return fmt.Errorf("service %q widget options must encode as JSON: %w", key, err)
+			}
 		}
 	}
 

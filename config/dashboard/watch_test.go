@@ -357,3 +357,42 @@ func TestNullEntryFailsFast(t *testing.T) {
 
 	reload(t.Context())
 }
+
+func TestReloadRejectsWidgetOptionsThatCannotEncodeAsJSON(t *testing.T) {
+	for _, options := range []string{"{threshold: .nan}", "{nested: {thresholds: [0, .inf]}}"} {
+		t.Run(options, func(t *testing.T) {
+			filename := prepareReloadTest(t)
+			previous := getCurrentConfig(t.Context())
+
+			const fixture = "services:\n  sensor:\n    widget:\n      type: homeassistant\n      options: "
+
+			err := os.WriteFile(filename, []byte(fixture+options), 0o600)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			_, err = getConfigFromFile(t.Context())
+			if err == nil || !strings.Contains(err.Error(), `service "sensor" widget options`) {
+				t.Errorf("expected widget options error for service sensor, got %v", err)
+			}
+
+			reload(t.Context())
+
+			if getCurrentConfig(t.Context()) != previous {
+				t.Error("invalid widget options replaced previous config")
+			}
+
+			err = os.WriteFile(
+				filename,
+				[]byte(fixture+"{entities: [light.test], nested: {'1': value}}"),
+				0o600,
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			reload(t.Context())
+			requireService(t, "sensor")
+		})
+	}
+}
