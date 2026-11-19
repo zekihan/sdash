@@ -72,18 +72,19 @@ type Summary struct {
 }
 
 type apiResource struct {
-	Type    string  `json:"type"`
-	Node    string  `json:"node"`
-	Name    string  `json:"name"`
-	Status  string  `json:"status"`
-	Storage string  `json:"storage"`
-	VMID    int     `json:"vmid"`
-	CPU     float64 `json:"cpu"`
-	Mem     uint64  `json:"mem"`
-	MaxMem  uint64  `json:"maxmem"`
-	Disk    uint64  `json:"disk"`
-	MaxDisk uint64  `json:"maxdisk"`
-	Shared  int     `json:"shared"`
+	Type     string  `json:"type"`
+	Node     string  `json:"node"`
+	Name     string  `json:"name"`
+	Status   string  `json:"status"`
+	Storage  string  `json:"storage"`
+	VMID     int     `json:"vmid"`
+	CPU      float64 `json:"cpu"`
+	Mem      uint64  `json:"mem"`
+	MaxMem   uint64  `json:"maxmem"`
+	Disk     uint64  `json:"disk"`
+	MaxDisk  uint64  `json:"maxdisk"`
+	Shared   int     `json:"shared"`
+	Template int     `json:"template"`
 }
 
 type apiResponse struct {
@@ -195,6 +196,10 @@ func (summary *Summary) addNode(resource *apiResource) {
 }
 
 func (summary *Summary) addGuest(resource *apiResource) {
+	if resource.Template == 1 {
+		return
+	}
+
 	summary.GuestsTotal++
 
 	if resource.Status == "running" {

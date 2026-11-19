@@ -64,6 +64,34 @@ func TestSummary(t *testing.T) {
 	}
 }
 
+func TestSummaryExcludesGuestTemplates(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[
+			{"type":"qemu","node":"pve-1","name":"vm-web","status":"running","vmid":100},
+			{"type":"lxc","node":"pve-1","name":"ct-dns","status":"stopped","vmid":101,"template":0},
+			{"type":"qemu","node":"pve-1","name":"vm-base","status":"stopped","vmid":102,"template":1},
+			{"type":"lxc","node":"pve-1","name":"ct-base","status":"stopped","vmid":103,"template":1}
+		]}`))
+	}))
+	defer server.Close()
+
+	cfg := new(config.ProxmoxConfig)
+	cfg.URL = server.URL
+
+	summary, err := New(*cfg).Summary(t.Context())
+	if err != nil {
+		t.Fatalf("Summary: %v", err)
+	}
+
+	if summary.GuestsRun != 1 || summary.GuestsTotal != 2 {
+		t.Errorf("guests running/total = %d/%d, want 1/2", summary.GuestsRun, summary.GuestsTotal)
+	}
+
+	if len(summary.Stopped) != 1 || summary.Stopped[0].VMID != 101 {
+		t.Errorf("stopped guests = %+v, want only guest 101", summary.Stopped)
+	}
+}
+
 func TestSummaryUnauthorized(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
