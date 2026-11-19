@@ -1,9 +1,11 @@
 package health
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/zekihan/sdash/config"
@@ -85,6 +87,53 @@ func TestProbeStates(t *testing.T) {
 	if statuses["ok"].Uptime != 100 {
 		t.Errorf("ok uptime = %v, want 100", statuses["ok"].Uptime)
 	}
+}
+
+type delayedProbeTransport struct{}
+
+func (delayedProbeTransport) RoundTrip(_ *http.Request) (*http.Response, error) {
+	body, writer := io.Pipe()
+	ready := time.After(slowLatency)
+
+	go func() {
+		<-ready
+
+		_, _ = io.WriteString(writer, "all good")
+		_ = writer.Close()
+	}()
+
+	response := new(http.Response)
+	response.StatusCode = http.StatusOK
+	response.Body = body
+
+	return response, nil
+}
+
+func TestProbeLatencyIncludesRequiredKeyword(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		statusOnly := testService("status-only", "http://service.example")
+		keyword := testService("keyword", "http://service.example")
+		keyword.HealthKeyword = "good"
+		monitor := testMonitor(func() []*dashboard.Service {
+			return []*dashboard.Service{statusOnly, keyword}
+		})
+		monitor.cfg.Timeout = 2 * slowLatency
+		monitor.client.Timeout = monitor.cfg.Timeout
+		monitor.client.Transport = delayedProbeTransport{}
+
+		monitor.ProbeAll(t.Context())
+
+		statuses := monitor.Snapshot()
+		if got := statuses[statusOnly.Key]; got.State != StateUp || got.LatencyMs != 0 {
+			t.Errorf("status-only probe = %s at %dms, want up at 0ms", got.State, got.LatencyMs)
+		}
+
+		if got := statuses[keyword.Key]; got.State != StateSlow ||
+			got.LatencyMs != slowLatency.Milliseconds() {
+			t.Errorf("keyword probe = %s at %dms, want slow at %dms",
+				got.State, got.LatencyMs, slowLatency.Milliseconds())
+		}
+	})
 }
 
 func TestHistoryIsBoundedAndStaleTargetsDrop(t *testing.T) {
