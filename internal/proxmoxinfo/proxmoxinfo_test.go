@@ -64,6 +64,76 @@ func TestSummary(t *testing.T) {
 	}
 }
 
+func TestSummaryExcludesGuestTemplates(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[
+			{"type":"qemu","node":"pve-1","name":"vm-web","status":"running","vmid":100},
+			{"type":"lxc","node":"pve-1","name":"ct-dns","status":"stopped","vmid":101,"template":0},
+			{"type":"qemu","node":"pve-1","name":"vm-base","status":"stopped","vmid":102,"template":1},
+			{"type":"lxc","node":"pve-1","name":"ct-base","status":"stopped","vmid":103,"template":1}
+		]}`))
+	}))
+	defer server.Close()
+
+	cfg := new(config.ProxmoxConfig)
+	cfg.URL = server.URL
+
+	summary, err := New(*cfg).Summary(t.Context())
+	if err != nil {
+		t.Fatalf("Summary: %v", err)
+	}
+
+	if summary.GuestsRun != 1 || summary.GuestsTotal != 2 {
+		t.Errorf("guests running/total = %d/%d, want 1/2", summary.GuestsRun, summary.GuestsTotal)
+	}
+
+	if len(summary.Stopped) != 1 || summary.Stopped[0].VMID != 101 {
+		t.Errorf("stopped guests = %+v, want only guest 101", summary.Stopped)
+	}
+}
+
+func TestSummaryUsesReportedSharedStorageCapacity(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[
+			{"type":"storage","node":"pve-1","storage":"backup","status":"unknown","shared":1},
+			{"type":"storage","node":"pve-2","storage":"backup","status":"available",
+			 "disk":50,"maxdisk":200,"shared":1},
+			{"type":"storage","node":"pve-3","storage":"backup","status":"available",
+			 "disk":50,"maxdisk":200,"shared":1},
+			{"type":"storage","node":"pve-1","storage":"local","status":"available",
+			 "disk":10,"maxdisk":100,"shared":0},
+			{"type":"storage","node":"pve-2","storage":"local","status":"available",
+			 "disk":20,"maxdisk":300,"shared":0}
+		]}`))
+	}))
+	defer server.Close()
+
+	cfg := new(config.ProxmoxConfig)
+	cfg.URL = server.URL
+
+	summary, err := New(*cfg).Summary(t.Context())
+	if err != nil {
+		t.Fatalf("Summary: %v", err)
+	}
+
+	if summary.StorageUsed != 80 || summary.StorageTotal != 600 {
+		t.Errorf(
+			"storage used/total = %d/%d, want 80/600",
+			summary.StorageUsed,
+			summary.StorageTotal,
+		)
+	}
+
+	if len(summary.Storage) != 3 {
+		t.Fatalf("storage = %+v, want one shared row and two local rows", summary.Storage)
+	}
+
+	shared := summary.Storage[0]
+	if shared.Name != "backup" || shared.Used != 50 || shared.Total != 200 || shared.UsedPct != 25 {
+		t.Errorf("shared storage = %+v, want backup with 50/200 used (25%%)", shared)
+	}
+}
+
 func TestSummaryUnauthorized(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
