@@ -1,8 +1,11 @@
 package gatusinfo
 
 import (
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -44,5 +47,38 @@ func TestSummary(t *testing.T) {
 		if endpoint.Name == "db" && endpoint.Uptime != 50 {
 			t.Errorf("db uptime = %v, want 50", endpoint.Uptime)
 		}
+	}
+}
+
+func TestSummaryResponseLimit(t *testing.T) {
+	const statuses = `[]`
+
+	padded := statuses + strings.Repeat(" ", maxResponseBytes-len(statuses))
+
+	for _, test := range []struct {
+		want error
+		name string
+		body string
+	}{
+		{name: "at limit", body: padded, want: nil},
+		{name: "over limit", body: padded + " ", want: ErrBadResponse},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(
+				http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					_, _ = io.WriteString(w, test.body)
+				}),
+			)
+			defer server.Close()
+
+			summary, err := New(server.URL).Summary(t.Context())
+			if !errors.Is(err, test.want) {
+				t.Fatalf("Summary = %+v, %v, want error %v", summary, err, test.want)
+			}
+
+			if test.want == nil && (summary == nil || !summary.Available) {
+				t.Fatalf("Summary = %+v, want an available summary", summary)
+			}
+		})
 	}
 }
