@@ -33,6 +33,8 @@ async function getJSON<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+let preferenceWrites = Promise.resolve();
+
 export const api = {
   me: () => getJSON<Me>("/api/me"),
   dashboard: () => getJSON<Dashboard>("/api/dashboard"),
@@ -51,12 +53,18 @@ export const api = {
     getJSON<ArrLookupResult[]>(`/api/arr/lookup?type=${encodeURIComponent(type)}&term=${encodeURIComponent(term)}`),
   getPreferences: () => getJSON<{ enabled: boolean; prefs: unknown }>("/api/preferences"),
   putPreferences: async (prefs: unknown) => {
-    const res = await fetch("/api/preferences", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(prefs),
+    const body = JSON.stringify(prefs);
+    // Overlapping writes can reach the server out of order.
+    const write = preferenceWrites.then(async () => {
+      const res = await fetch("/api/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+      if (!res.ok) throw new ApiError(res.status, "preference sync failed");
     });
-    if (!res.ok) throw new ApiError(res.status, "preference sync failed");
+    preferenceWrites = write.catch(() => undefined);
+    return write;
   },
   action: async (path: string, body: unknown) => {
     const res = await fetch(path, {
