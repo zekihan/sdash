@@ -22,17 +22,22 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET" || url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/login")) return;
 
-  // Navigations: network first, fall back to the cached shell offline.
+  // Navigations: network first, with the last successful HTML page as fallback.
   if (event.request.mode === "navigate") {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
+    const online = fetch(event.request);
+    event.waitUntil(
+      online
+        .then(async (response) => {
+          const type = response.headers.get("Content-Type")?.split(";", 1)[0].trim().toLowerCase();
+          if (!response.ok || type !== "text/html") return;
+
           const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put("/index.html", copy));
-          return response;
+          const cache = await caches.open(CACHE);
+          await cache.put("/index.html", copy);
         })
-        .catch(() => caches.match("/index.html")),
+        .catch(() => undefined),
     );
+    event.respondWith(online.catch(() => caches.match("/index.html")));
     return;
   }
 
