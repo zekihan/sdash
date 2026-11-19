@@ -43,23 +43,29 @@ type Client struct {
 	httpClient *http.Client
 	base       string
 	token      string
+	tokenFile  string
 	argocdNS   string
 }
 
 type transportConfig struct {
-	server   string
-	token    string
-	caData   []byte
-	certData []byte
-	keyData  []byte
-	insecure bool
+	server    string
+	token     string
+	tokenFile string
+	caData    []byte
+	certData  []byte
+	keyData   []byte
+	insecure  bool
 }
 
 // New builds a client from the config: explicit kubeconfig path, else the
 // in-cluster service account, else ~/.kube/config. KUBECONFIG (first entry)
 // is honored when no path is configured.
 func New(cfg config.KubernetesConfig) (*Client, error) {
-	transport, err := loadTransport(cfg.Kubeconfig)
+	return newClient(cfg, serviceAccountDir)
+}
+
+func newClient(cfg config.KubernetesConfig, accountDir string) (*Client, error) {
+	transport, err := loadTransport(cfg.Kubeconfig, accountDir)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +104,7 @@ func New(cfg config.KubernetesConfig) (*Client, error) {
 	client.httpClient = httpClient
 	client.base = strings.TrimSuffix(transport.server, "/")
 	client.token = transport.token
+	client.tokenFile = transport.tokenFile
 	client.argocdNS = cfg.ArgocdNamespace
 
 	if client.argocdNS == "" {
@@ -107,12 +114,12 @@ func New(cfg config.KubernetesConfig) (*Client, error) {
 	return client, nil
 }
 
-func loadTransport(kubeconfigPath string) (*transportConfig, error) {
+func loadTransport(kubeconfigPath, accountDir string) (*transportConfig, error) {
 	if kubeconfigPath != "" {
 		return loadKubeconfig(kubeconfigPath)
 	}
 
-	inCluster, err := loadInCluster()
+	inCluster, err := loadInCluster(accountDir)
 	if err == nil {
 		return inCluster, nil
 	}
@@ -131,7 +138,7 @@ func loadTransport(kubeconfigPath string) (*transportConfig, error) {
 	return loadKubeconfig(filepath.Join(home, ".kube", "config"))
 }
 
-func loadInCluster() (*transportConfig, error) {
+func loadInCluster(accountDir string) (*transportConfig, error) {
 	host := os.Getenv("KUBERNETES_SERVICE_HOST")
 	port := os.Getenv("KUBERNETES_SERVICE_PORT")
 
@@ -139,16 +146,18 @@ func loadInCluster() (*transportConfig, error) {
 		return nil, ErrNoConfig
 	}
 
-	token, err := os.ReadFile(filepath.Join(serviceAccountDir, "token"))
+	tokenFile := filepath.Join(accountDir, "token")
+
+	_, err := os.ReadFile(tokenFile)
 	if err != nil {
 		return nil, ErrNoConfig
 	}
 
 	transport := new(transportConfig)
 	transport.server = "https://" + net.JoinHostPort(host, port)
-	transport.token = strings.TrimSpace(string(token))
+	transport.tokenFile = tokenFile
 
-	caData, err := os.ReadFile(filepath.Join(serviceAccountDir, "ca.crt"))
+	caData, err := os.ReadFile(filepath.Join(accountDir, "ca.crt"))
 	if err == nil {
 		transport.caData = caData
 	}
@@ -311,17 +320,44 @@ func fileOrData(baseDir, file, data string) ([]byte, error) {
 	return content, nil
 }
 
-// getJSON performs an authenticated GET against the API server.
-func (client *Client) getJSON(ctx context.Context, apiPath string, out any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, client.base+apiPath, http.NoBody)
+func (client *Client) newRequest(
+	ctx context.Context,
+	method, apiPath string,
+	body io.Reader,
+) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, client.base+apiPath, body)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", ErrUnavailable, err)
 	}
 
 	req.Header.Set("Accept", "application/json")
 
-	if client.token != "" {
-		req.Header.Set("Authorization", "Bearer "+client.token)
+	token := client.token
+	if client.tokenFile != "" {
+		// The kubelet replaces projected service account tokens as they rotate.
+		content, readErr := os.ReadFile(client.tokenFile)
+		if readErr != nil {
+			return nil, fmt.Errorf("%w: read service account token: %w", ErrUnavailable, readErr)
+		}
+
+		token = strings.TrimSpace(string(content))
+		if token == "" {
+			return nil, fmt.Errorf("%w: empty service account token", ErrUnavailable)
+		}
+	}
+
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	return req, nil
+}
+
+// getJSON performs an authenticated GET against the API server.
+func (client *Client) getJSON(ctx context.Context, apiPath string, out any) error {
+	req, err := client.newRequest(ctx, http.MethodGet, apiPath, http.NoBody)
+	if err != nil {
+		return err
 	}
 
 	resp, err := client.httpClient.Do(req)

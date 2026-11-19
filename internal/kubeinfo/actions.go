@@ -21,22 +21,12 @@ func (client *Client) patchJSON(ctx context.Context, apiPath string, payload any
 	reqCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(
-		reqCtx,
-		http.MethodPatch,
-		client.base+apiPath,
-		bytes.NewReader(content),
-	)
+	req, err := client.newRequest(reqCtx, http.MethodPatch, apiPath, bytes.NewReader(content))
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrUnavailable, err)
+		return err
 	}
 
 	req.Header.Set("Content-Type", "application/merge-patch+json")
-	req.Header.Set("Accept", "application/json")
-
-	if client.token != "" {
-		req.Header.Set("Authorization", "Bearer "+client.token)
-	}
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
