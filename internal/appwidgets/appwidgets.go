@@ -140,8 +140,10 @@ func (provider *Provider) ForServices(
 	fresh := provider.fetchAll(ctx, services)
 
 	provider.mu.Lock()
-	provider.cached = fresh
-	provider.at = time.Now()
+	if ctx.Err() == nil {
+		provider.cached = fresh
+		provider.at = time.Now()
+	}
 	provider.mu.Unlock()
 
 	return fresh

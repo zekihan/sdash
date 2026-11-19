@@ -115,8 +115,10 @@ func (provider *Provider) MediaRail(ctx context.Context) *MediaRail {
 	waitGroup.Wait()
 
 	provider.mu.Lock()
-	provider.mediaCache = rail
-	provider.mediaAt = time.Now()
+	if ctx.Err() == nil {
+		provider.mediaCache = rail
+		provider.mediaAt = time.Now()
+	}
 	provider.mu.Unlock()
 
 	return rail

@@ -108,8 +108,10 @@ func (provider *Provider) Calendar(ctx context.Context) *CalendarResponse {
 	})
 
 	provider.mu.Lock()
-	provider.calendarCache = response
-	provider.calendarAt = time.Now()
+	if ctx.Err() == nil {
+		provider.calendarCache = response
+		provider.calendarAt = time.Now()
+	}
 	provider.mu.Unlock()
 
 	return response

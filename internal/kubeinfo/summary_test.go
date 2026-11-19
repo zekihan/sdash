@@ -21,11 +21,17 @@ func testClient(t *testing.T) *Client {
 	mux.HandleFunc("/api/v1/pods", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"items":[
 			{"metadata":{"name":"web-0","namespace":"apps"},
-			 "status":{"phase":"Running","containerStatuses":[{"ready":true,"restartCount":0}]}},
+			 "status":{"phase":"Running","containerStatuses":[{"ready":true,"restartCount":0}],
+			  "conditions":[{"type":"Ready","status":"True"}]}},
 			{"metadata":{"name":"job-0","namespace":"apps"},
 			 "status":{"phase":"Succeeded","containerStatuses":[{"ready":false,"restartCount":0}]}},
 			{"metadata":{"name":"bad-0","namespace":"apps"},
-			 "status":{"phase":"Running","containerStatuses":[{"ready":false,"restartCount":7}]}}
+			 "status":{"phase":"Running","containerStatuses":[{"ready":false,"restartCount":7}]}},
+			{"metadata":{"name":"gated-0","namespace":"apps"},
+			 "spec":{"readinessGates":[{"conditionType":"example.com/backend-registered"}]},
+			 "status":{"phase":"Running","containerStatuses":[{"ready":true,"restartCount":0}],
+			  "conditions":[{"type":"ContainersReady","status":"True"},
+			                {"type":"Ready","status":"False","reason":"ReadinessGatesNotReady"}]}}
 		]}`))
 	})
 	mux.HandleFunc("/apis/apps/v1/deployments", func(w http.ResponseWriter, _ *http.Request) {
@@ -82,16 +88,25 @@ func checkNodesAndPods(t *testing.T, summary *Summary) {
 		t.Errorf("node-a roles = %q, want control-plane", summary.Nodes[0].Roles)
 	}
 
-	if summary.PodsReady != 2 || summary.PodsTotal != 3 {
+	if summary.PodsReady != 2 || summary.PodsTotal != 4 {
 		t.Errorf(
-			"pods = %d/%d, want 2/3 (succeeded counts ready)",
+			"pods = %d/%d, want 2/4 (succeeded counts ready)",
 			summary.PodsReady,
 			summary.PodsTotal,
 		)
 	}
 
-	if len(summary.PodsNotReady) != 1 || summary.PodsNotReady[0].Restarts != 7 {
-		t.Errorf("podsNotReady = %+v, want bad-0 with 7 restarts", summary.PodsNotReady)
+	if len(summary.PodsNotReady) != 2 || summary.PodsNotReady[0].Restarts != 7 {
+		t.Fatalf("podsNotReady = %+v, want bad-0 with 7 restarts and gated-0", summary.PodsNotReady)
+	}
+
+	gated := summary.PodsNotReady[1]
+	if gated.Name != "gated-0" || gated.Ready != 1 || gated.Desired != 1 ||
+		gated.Detail != "ReadinessGatesNotReady" {
+		t.Errorf(
+			"gated pod = %+v, want gated-0 with 1/1 containers and readiness gate reason",
+			gated,
+		)
 	}
 }
 
