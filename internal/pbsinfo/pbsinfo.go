@@ -154,6 +154,11 @@ func (client *Client) addBackupTasks(ctx context.Context, summary *Summary) {
 	}
 
 	for _, task := range tasks.Data {
+		// PBS omits endtime for running tasks.
+		if task.EndTime == 0 {
+			continue
+		}
+
 		summary.RecentTotal++
 
 		if task.Status != "OK" {
