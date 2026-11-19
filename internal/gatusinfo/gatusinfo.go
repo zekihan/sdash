@@ -179,9 +179,13 @@ func (client *Client) fetch(ctx context.Context) ([]byte, error) {
 		return nil, fmt.Errorf("%w: status %d", ErrUnavailable, resp.StatusCode)
 	}
 
-	content, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
+	content, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrBadResponse, err)
+	}
+
+	if len(content) > maxResponseBytes {
+		return nil, fmt.Errorf("%w: response exceeds %d bytes", ErrBadResponse, maxResponseBytes)
 	}
 
 	return content, nil

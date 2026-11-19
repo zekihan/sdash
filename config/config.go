@@ -1,4 +1,3 @@
-//nolint:forbidigo // This package configures log packages.
 package config
 
 import (
@@ -40,7 +39,7 @@ var (
 		"sessionTimeout must be a whole number of seconds between 1s and 720h",
 	)
 	ErrInvalidConfigDocument = errors.New(
-		"config must contain a YAML mapping; use {} for defaults",
+		"config must contain exactly one YAML mapping (use {} for defaults)",
 	)
 )
 
@@ -371,35 +370,16 @@ func GetConfigFromFile(ctx context.Context) *Config {
 		)
 		os.Exit(1) //nolint:forbidigo // Using os.Exit in config initialization is acceptable.
 	}
-	defer func(file *os.File) {
-		fileErr := file.Close()
-		if fileErr != nil {
-			fmt.Printf("Failed to close config file: %v", fileErr)
-		}
-	}(file)
+	// Require one complete mapping so startup can't silently ignore config data.
+	decoder := yaml.NewDecoder(file)
 
-	content, err := io.ReadAll(file)
-	if err != nil {
-		fileErr := file.Close()
-		if fileErr != nil {
-			fmt.Printf("Failed to close config file after read error: %v", fileErr)
-		}
-
-		slog.ErrorContext(
-			ctx,
-			"Failed to read config file, using default config",
-			slog.Any("error", err),
-		)
-		//nolint:forbidigo,gocritic // Using os.Exit in config initialization is acceptable.
-		os.Exit(1)
-	}
-
-	// Require an explicit mapping so an empty or truncated file cannot silently
-	// start the server with defaults and no authentication providers.
 	var document yaml.Node
 
-	err = yaml.Unmarshal(content, &document)
-	if err == nil {
+	err = decoder.Decode(&document)
+	switch {
+	case errors.Is(err, io.EOF):
+		err = ErrInvalidConfigDocument
+	case err == nil:
 		if len(document.Content) != 1 || document.Content[0].Kind != yaml.MappingNode {
 			err = ErrInvalidConfigDocument
 		} else {
@@ -407,10 +387,25 @@ func GetConfigFromFile(ctx context.Context) *Config {
 		}
 	}
 
+	if err == nil {
+		err = decoder.Decode(new(yaml.Node))
+		switch {
+		case errors.Is(err, io.EOF):
+			err = nil
+		case err == nil:
+			err = ErrInvalidConfigDocument
+		}
+	}
+
+	closeErr := file.Close()
+	if closeErr != nil {
+		slog.ErrorContext(ctx, "Failed to close config file", slog.Any("error", closeErr))
+	}
+
 	if err != nil {
 		slog.ErrorContext(
 			ctx,
-			"Failed to unmarshal config file, using default config",
+			"Failed to decode config file",
 			slog.Any("error", err),
 		)
 		os.Exit(1) //nolint:forbidigo // Using os.Exit in config initialization is acceptable.
