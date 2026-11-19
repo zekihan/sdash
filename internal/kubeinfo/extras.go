@@ -166,15 +166,19 @@ func (client *Client) fetchLonghorn(ctx context.Context, summary *Summary) error
 		"/apis/longhorn.io/v1beta2/namespaces/longhorn/volumes?limit=500",
 		list,
 	)
-	if err != nil {
-		// Older Longhorn installs use the longhorn-system namespace.
-		err = client.getJSON(
+	// A Kubernetes list can be empty even when the requested namespace does not exist.
+	if err != nil || len(list.Items) == 0 {
+		fallback := new(longhornVolumeList)
+
+		fallbackErr := client.getJSON(
 			ctx,
 			"/apis/longhorn.io/v1beta2/namespaces/longhorn-system/volumes?limit=500",
-			list,
+			fallback,
 		)
-		if err != nil {
-			return err
+		if fallbackErr == nil {
+			list = fallback
+		} else if err != nil {
+			return fallbackErr
 		}
 	}
 
