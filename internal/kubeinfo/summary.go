@@ -105,7 +105,12 @@ type podList struct {
 			Namespace string `json:"namespace"`
 		} `json:"metadata"`
 		Status struct {
-			Phase             string `json:"phase"`
+			Phase      string `json:"phase"`
+			Conditions []struct {
+				Type   string `json:"type"`
+				Status string `json:"status"`
+				Reason string `json:"reason"`
+			} `json:"conditions"`
 			ContainerStatuses []struct {
 				Ready        bool `json:"ready"`
 				RestartCount int  `json:"restartCount"`
@@ -303,6 +308,30 @@ func (client *Client) fetchPods(ctx context.Context, summary *Summary) error {
 			continue
 		}
 
+		detail := item.Status.Phase
+		podReady := false
+
+		if item.Status.Phase == "Running" {
+			for _, condition := range item.Status.Conditions {
+				if condition.Type != "Ready" {
+					continue
+				}
+
+				podReady = condition.Status == "True"
+				if condition.Reason != "" {
+					detail = condition.Reason
+				}
+
+				break
+			}
+		}
+
+		if podReady {
+			readyCount++
+
+			continue
+		}
+
 		ready := 0
 		restarts := 0
 
@@ -314,19 +343,12 @@ func (client *Client) fetchPods(ctx context.Context, summary *Summary) error {
 			restarts += container.RestartCount
 		}
 
-		desired := len(item.Status.ContainerStatuses)
-		if item.Status.Phase == "Running" && desired > 0 && ready == desired {
-			readyCount++
-
-			continue
-		}
-
 		workload := new(Workload)
 		workload.Namespace = item.Metadata.Namespace
 		workload.Name = item.Metadata.Name
-		workload.Detail = item.Status.Phase
+		workload.Detail = detail
 		workload.Ready = ready
-		workload.Desired = desired
+		workload.Desired = len(item.Status.ContainerStatuses)
 		workload.Restarts = restarts
 		notReady = append(notReady, *workload)
 	}
