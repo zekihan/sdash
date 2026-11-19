@@ -69,14 +69,23 @@ func cpuPercent() float64 {
 	previous, had := lastCPU, hasCPU
 	lastCPU, hasCPU = current, true
 
-	if !had || current.total <= previous.total {
+	if !had {
+		return 0
+	}
+
+	return cpuUtilization(previous, current)
+}
+
+func cpuUtilization(previous, current cpuTimes) float64 {
+	// Linux iowait can decrease, which can make the combined idle counter go backwards.
+	if current.total <= previous.total || current.idle < previous.idle {
 		return 0
 	}
 
 	totalDelta := current.total - previous.total
 	idleDelta := current.idle - previous.idle
 
-	if totalDelta == 0 {
+	if idleDelta > totalDelta {
 		return 0
 	}
 
