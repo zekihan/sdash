@@ -29,6 +29,7 @@ func TestSummary(t *testing.T) {
 		"/api2/json/nodes/localhost/tasks",
 		func(w http.ResponseWriter, _ *http.Request) {
 			_, _ = w.Write([]byte(`{"data":[
+			{"type":"backup","starttime":500},
 			{"status":"OK","type":"backup","starttime":100,"endtime":200},
 			{"status":"backup failed","type":"backup","starttime":300,"endtime":400}
 		]}`))
@@ -55,5 +56,10 @@ func TestSummary(t *testing.T) {
 	if summary.RecentTotal != 2 || summary.RecentFailures != 1 || summary.LastBackupOK {
 		t.Errorf("backups = total %d failures %d lastOK %v, want 2/1/false",
 			summary.RecentTotal, summary.RecentFailures, summary.LastBackupOK)
+	}
+
+	if !summary.HasBackups || summary.LastBackupAt != 400 {
+		t.Errorf("last backup = %d, has backups = %v, want a completed backup at 400",
+			summary.LastBackupAt, summary.HasBackups)
 	}
 }
