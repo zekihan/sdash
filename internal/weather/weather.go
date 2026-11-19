@@ -73,20 +73,20 @@ type Day struct {
 //
 //nolint:tagliatelle // Open-Meteo uses snake_case keys
 type apiResponse struct {
+	Current struct {
+		Temperature *float64 `json:"temperature_2m"`
+		FeelsLike   *float64 `json:"apparent_temperature"`
+		Humidity    *float64 `json:"relative_humidity_2m"`
+		WindSpeed   *float64 `json:"wind_speed_10m"`
+		Code        *int     `json:"weather_code"`
+		IsDay       *int     `json:"is_day"`
+	} `json:"current"`
 	Daily struct {
 		Time []string  `json:"time"`
 		Code []int     `json:"weather_code"`
 		Max  []float64 `json:"temperature_2m_max"`
 		Min  []float64 `json:"temperature_2m_min"`
 	} `json:"daily"`
-	Current struct {
-		Temperature float64 `json:"temperature_2m"`
-		FeelsLike   float64 `json:"apparent_temperature"`
-		Humidity    float64 `json:"relative_humidity_2m"`
-		WindSpeed   float64 `json:"wind_speed_10m"`
-		Code        int     `json:"weather_code"`
-		IsDay       int     `json:"is_day"`
-	} `json:"current"`
 }
 
 // Client caches the last successful report.
@@ -187,20 +187,26 @@ func (client *Client) fetch(ctx context.Context) (*Report, error) {
 		return nil, fmt.Errorf("%w: %w", ErrBadResponse, err)
 	}
 
-	return client.toReport(parsed), nil
+	return client.toReport(parsed)
 }
 
-func (client *Client) toReport(parsed *apiResponse) *Report {
+func (client *Client) toReport(parsed *apiResponse) (*Report, error) {
+	if parsed.Current.Temperature == nil || parsed.Current.FeelsLike == nil ||
+		parsed.Current.Humidity == nil || parsed.Current.WindSpeed == nil ||
+		parsed.Current.Code == nil || parsed.Current.IsDay == nil {
+		return nil, fmt.Errorf("%w: incomplete current conditions", ErrBadResponse)
+	}
+
 	report := new(Report)
 	report.Label = client.cfg.Label
 	report.Units = client.cfg.Units
-	report.Temp = parsed.Current.Temperature
-	report.FeelsLike = parsed.Current.FeelsLike
-	report.Humidity = parsed.Current.Humidity
-	report.WindSpeed = parsed.Current.WindSpeed
-	report.Code = parsed.Current.Code
-	report.Description = Describe(parsed.Current.Code)
-	report.IsDay = parsed.Current.IsDay == 1
+	report.Temp = *parsed.Current.Temperature
+	report.FeelsLike = *parsed.Current.FeelsLike
+	report.Humidity = *parsed.Current.Humidity
+	report.WindSpeed = *parsed.Current.WindSpeed
+	report.Code = *parsed.Current.Code
+	report.Description = Describe(report.Code)
+	report.IsDay = *parsed.Current.IsDay == 1
 	report.FetchedAt = time.Now().Format(time.RFC3339)
 	report.Daily = make([]Day, 0, len(parsed.Daily.Time))
 
@@ -223,7 +229,7 @@ func (client *Client) toReport(parsed *apiResponse) *Report {
 		report.Daily = append(report.Daily, *day)
 	}
 
-	return report
+	return report, nil
 }
 
 // Describe maps a WMO weather code to a short label.
