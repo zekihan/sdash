@@ -137,7 +137,7 @@ func (client *Client) Summary(ctx context.Context) (*Summary, error) {
 	summary.Stopped = []Guest{}
 	summary.WakeHosts = []string{}
 
-	seenStorage := make(map[string]bool)
+	sharedStorage := make(map[string]*apiResource)
 
 	for index := range response.Data {
 		resource := &response.Data[index]
@@ -147,14 +147,22 @@ func (client *Client) Summary(ctx context.Context) (*Summary, error) {
 		case "qemu", "lxc":
 			summary.addGuest(resource)
 		case "storage":
-			// Shared storage appears once per node; count it once.
-			if resource.Shared == 1 && seenStorage[resource.Storage] {
+			if resource.Shared != 1 {
+				summary.addStorage(resource)
+
 				continue
 			}
 
-			seenStorage[resource.Storage] = true
-			summary.addStorage(resource)
+			// A node that cannot access the shared storage may omit its capacity.
+			selected := sharedStorage[resource.Storage]
+			if selected == nil || (selected.MaxDisk == 0 && resource.MaxDisk > 0) {
+				sharedStorage[resource.Storage] = resource
+			}
 		}
+	}
+
+	for _, resource := range sharedStorage {
+		summary.addStorage(resource)
 	}
 
 	sort.Slice(summary.Nodes, func(first, second int) bool {
