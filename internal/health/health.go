@@ -338,45 +338,43 @@ func (monitor *Monitor) probe(ctx context.Context, service *dashboard.Service) S
 	}()
 
 	sample.Code = resp.StatusCode
+	if !service.IsHealthyStatus(sample.Code) {
+		sample.Error = resp.Status
+		drain(resp)
 
-	healthy, reason := monitor.isHealthy(resp, service)
+		return *sample
+	}
+
+	if service.HealthKeyword == "" {
+		drain(resp)
+	} else {
+		sample.Error = checkKeyword(resp.Body, service.HealthKeyword)
+		sample.Latency = time.Since(start)
+	}
 
 	switch {
-	case !healthy:
-		sample.Error = reason
+	case sample.Error != "":
+		return *sample
 	case sample.Latency >= slowLatency:
 		sample.State = StateSlow
 	default:
 		sample.State = StateUp
-		sample.Error = ""
 	}
 
 	return *sample
 }
 
-func (monitor *Monitor) isHealthy(resp *http.Response, service *dashboard.Service) (bool, string) {
-	if !service.IsHealthyStatus(resp.StatusCode) {
-		drain(resp)
-
-		return false, resp.Status
-	}
-
-	if service.HealthKeyword == "" {
-		drain(resp)
-
-		return true, ""
-	}
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxProbeBodyBytes))
+func checkKeyword(reader io.Reader, keyword string) string {
+	body, err := io.ReadAll(io.LimitReader(reader, maxProbeBodyBytes))
 	if err != nil {
-		return false, "failed to read body"
+		return "failed to read body"
 	}
 
-	if !strings.Contains(string(body), service.HealthKeyword) {
-		return false, "keyword not found"
+	if !strings.Contains(string(body), keyword) {
+		return "keyword not found"
 	}
 
-	return true, ""
+	return ""
 }
 
 func drain(resp *http.Response) {
