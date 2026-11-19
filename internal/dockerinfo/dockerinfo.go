@@ -117,8 +117,11 @@ func New(host string) (*Client, error) {
 
 func newHTTPClient(transport *http.Transport) *http.Client {
 	client := new(http.Client)
+
 	client.Timeout = defaultTimeout
-	client.Transport = transport
+	if transport != nil {
+		client.Transport = transport
+	}
 
 	return client
 }
