@@ -38,6 +38,8 @@ export function timeAgo(iso: string): string {
 export function humanizeHealthError(error: string | undefined, code: number): string {
   if (!error) return code ? `HTTP ${code}` : "Unreachable";
   const text = error.toLowerCase();
+  if (text === "keyword not found") return "Expected text missing";
+  if (text === "failed to read body") return "Could not read response";
   if (text.includes("no such host") || text.includes("server misbehaving")) return "DNS lookup failed";
   if (text.includes("connection refused")) return "Connection refused";
   if (text.includes("deadline exceeded") || text.includes("timeout") || text.includes("timed out")) return "Timed out";
