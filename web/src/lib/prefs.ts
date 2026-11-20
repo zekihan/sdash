@@ -25,7 +25,7 @@ export function defaultPrefs(seed?: {
 }): Prefs {
   return {
     theme: seed?.theme ?? "dark",
-    accent: seed?.accent ?? "lime",
+    accent: ACCENTS.find((accent) => accent === seed?.accent) ?? "lime",
     density: seed?.density ?? "comfortable",
     layout: "grid",
     pinned: [],
@@ -51,7 +51,7 @@ export function sanitizePrefs(raw: unknown, fallback: Prefs): Prefs {
     Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
   return {
     theme: parsed.theme === "dark" || parsed.theme === "light" || parsed.theme === "system" ? parsed.theme : fallback.theme,
-    accent: typeof parsed.accent === "string" && (ACCENTS as readonly string[]).includes(parsed.accent) ? parsed.accent : fallback.accent,
+    accent: ACCENTS.find((accent) => accent === parsed.accent) ?? fallback.accent,
     density: parsed.density === "compact" || parsed.density === "comfortable" ? parsed.density : fallback.density,
     layout: parsed.layout === "list" || parsed.layout === "grid" ? parsed.layout : fallback.layout,
     pinned: strings(parsed.pinned),
