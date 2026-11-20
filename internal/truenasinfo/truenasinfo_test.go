@@ -1,6 +1,8 @@
 package truenasinfo
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -51,5 +53,42 @@ func TestSummary(t *testing.T) {
 
 	if summary.Pools[1].Name != "tank" || summary.Pools[1].UsedPct != 25 {
 		t.Errorf("tank pool = %+v, want 25%% used", summary.Pools[1])
+	}
+}
+
+func TestSummaryMarksAlertsUnavailable(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v2.0/system/info", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"hostname":"storage"}`))
+	})
+	mux.HandleFunc("/api/v2.0/pool", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`[{"name":"tank","status":"ONLINE","healthy":true}]`))
+	})
+	mux.HandleFunc("/api/v2.0/alert/list", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	cfg := new(config.TrueNASConfig)
+	cfg.URL = server.URL
+
+	summary, err := New(*cfg).Summary(t.Context())
+	if err != nil {
+		t.Fatalf("Summary: %v", err)
+	}
+
+	if !summary.Available || summary.PoolsOK != 1 {
+		t.Fatalf("summary = %+v, want available pool data", summary)
+	}
+
+	body, err := json.Marshal(summary)
+	if err != nil {
+		t.Fatalf("marshal summary: %v", err)
+	}
+
+	if !bytes.Contains(body, []byte(`"alertsUnavailable":true`)) {
+		t.Errorf("summary = %s, want alerts marked unavailable", body)
 	}
 }

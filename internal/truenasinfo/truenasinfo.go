@@ -40,15 +40,16 @@ type Pool struct {
 
 // Summary is the dashboard-facing TrueNAS overview.
 type Summary struct {
-	Hostname   string `json:"hostname"`
-	Version    string `json:"version"`
-	Pools      []Pool `json:"pools"`
-	PoolsOK    int    `json:"poolsHealthy"`
-	PoolsTotal int    `json:"poolsTotal"`
-	Alerts     int    `json:"alerts"`
-	Used       uint64 `json:"used"`
-	Total      uint64 `json:"total"`
-	Available  bool   `json:"available"`
+	Hostname          string `json:"hostname"`
+	Version           string `json:"version"`
+	Pools             []Pool `json:"pools"`
+	PoolsOK           int    `json:"poolsHealthy"`
+	PoolsTotal        int    `json:"poolsTotal"`
+	Alerts            int    `json:"alerts"`
+	Used              uint64 `json:"used"`
+	Total             uint64 `json:"total"`
+	Available         bool   `json:"available"`
+	AlertsUnavailable bool   `json:"alertsUnavailable,omitempty"`
 }
 
 type apiSystemInfo struct {
@@ -149,7 +150,9 @@ func (client *Client) Summary(ctx context.Context) (*Summary, error) {
 	var alerts []apiAlert
 
 	err = client.getJSON(ctx, "/api/v2.0/alert/list", &alerts)
-	if err == nil {
+	if err != nil {
+		summary.AlertsUnavailable = true
+	} else {
 		for _, alert := range alerts {
 			if !alert.Dismissed {
 				summary.Alerts++

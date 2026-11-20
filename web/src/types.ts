@@ -227,6 +227,7 @@ export interface TrueNAS {
   poolsHealthy: number;
   poolsTotal: number;
   alerts: number;
+  alertsUnavailable?: boolean;
   used: number;
   total: number;
   available: boolean;
