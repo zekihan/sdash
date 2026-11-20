@@ -47,15 +47,15 @@ export function setPrefsErrorListener(listener: Listener): void {
 export function sanitizePrefs(raw: unknown, fallback: Prefs): Prefs {
   if (raw === null || typeof raw !== "object") return fallback;
   const parsed = raw as Partial<Prefs>;
-  const strings = (value: unknown): string[] =>
-    Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+  const strings = (value: unknown, defaultValue: string[]): string[] =>
+    Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : defaultValue;
   return {
     theme: parsed.theme === "dark" || parsed.theme === "light" || parsed.theme === "system" ? parsed.theme : fallback.theme,
     accent: ACCENTS.find((accent) => accent === parsed.accent) ?? fallback.accent,
     density: parsed.density === "compact" || parsed.density === "comfortable" ? parsed.density : fallback.density,
     layout: parsed.layout === "list" || parsed.layout === "grid" ? parsed.layout : fallback.layout,
-    pinned: strings(parsed.pinned),
-    recents: strings(parsed.recents),
+    pinned: strings(parsed.pinned, fallback.pinned),
+    recents: strings(parsed.recents, fallback.recents),
     showDocker: typeof parsed.showDocker === "boolean" ? parsed.showDocker : fallback.showDocker,
     immichBackground:
       typeof parsed.immichBackground === "boolean" ? parsed.immichBackground : fallback.immichBackground,
