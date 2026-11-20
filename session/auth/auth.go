@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -120,7 +121,8 @@ func initSource(ctx context.Context, key string, val *config.OidcConfig, cfg *co
 		os.Exit(1)
 	}
 
-	redirectURL := fmt.Sprintf("%s/user/oauth2/%s/callback", cfg.WebConfig.BaseURL, key)
+	baseURL := strings.TrimRight(cfg.WebConfig.BaseURL, "/")
+	redirectURL := fmt.Sprintf("%s/user/oauth2/%s/callback", baseURL, key)
 	oauth2Config := oauth2.Config{
 		ClientID:     val.ClientID,
 		ClientSecret: val.ClientSecret,

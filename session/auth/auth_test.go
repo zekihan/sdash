@@ -64,7 +64,7 @@ func TestInit(t *testing.T) {
 	oidcConfig.ClientSecret = mockOidcServer.ClientSecret
 	oidcConfig.DiscoveryEndpoint = mockOidcServer.Issuer()
 	cfg.OidcConfig = map[string]*config.OidcConfig{"test": oidcConfig}
-	cfg.WebConfig.BaseURL = "http://localhost:8080"
+	cfg.WebConfig.BaseURL = "https://dashboard.example/"
 
 	Init(cfg)
 
@@ -80,7 +80,13 @@ func TestInit(t *testing.T) {
 		t.Errorf("Expected DefaultOidcSource key to match, got %v", DefaultOidcSource.Key)
 	}
 
-	if _, ok := OidcSourceMap["test"]; !ok {
-		t.Errorf("Expected OidcSourceMap to contain the test key")
+	source, ok := OidcSourceMap["test"]
+	if !ok {
+		t.Fatal("Expected OidcSourceMap to contain the test key")
+	}
+
+	const wantRedirectURL = "https://dashboard.example/user/oauth2/test/callback"
+	if got := source.Config.RedirectURL; got != wantRedirectURL {
+		t.Errorf("OIDC redirect URL = %q, want %q", got, wantRedirectURL)
 	}
 }
