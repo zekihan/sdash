@@ -322,7 +322,9 @@ export function TrueNASBlock({
       </button>
       <p className="mt-1.5 text-[13px] text-ink-2">
         {formatBytes(truenas.used)}/{formatBytes(truenas.total)} ({usedPct.toFixed(0)}%)
-        {truenas.alerts > 0 && (
+        {truenas.alertsUnavailable ? (
+          <span className="text-slow"> · alerts unavailable</span>
+        ) : truenas.alerts > 0 && (
           <span className="text-slow"> · {truenas.alerts} {truenas.alerts === 1 ? "alert" : "alerts"}</span>
         )}
       </p>
