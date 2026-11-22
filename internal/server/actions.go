@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -414,7 +415,9 @@ func (srv *Server) handlePutPreferences(w http.ResponseWriter, r *http.Request) 
 	}
 
 	content, err := io.ReadAll(io.LimitReader(r.Body, maxPrefsBytes))
-	if err != nil || !json.Valid(content) || len(content) == 0 || content[0] != '{' {
+
+	trimmed := bytes.TrimSpace(content)
+	if err != nil || !json.Valid(content) || len(trimmed) == 0 || trimmed[0] != '{' {
 		writeError(w, http.StatusBadRequest, "preferences must be a JSON object")
 
 		return
