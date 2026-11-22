@@ -109,7 +109,11 @@ func isNumericHostname(host string) bool {
 		}
 
 		if digits == "" {
-			return hexadecimal
+			if !hexadecimal {
+				return false
+			}
+
+			continue
 		}
 
 		for _, ch := range digits {

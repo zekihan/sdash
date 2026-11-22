@@ -90,7 +90,8 @@ func TestParseIconURLNumericHostnameForms(t *testing.T) {
 	}
 
 	if !isNumericHostname("0X7F.0.0.1") || isNumericHostname("example.com") ||
-		isNumericHostname("0xzz.example") || isNumericHostname("") {
+		isNumericHostname("0xzz.example") || isNumericHostname("") ||
+		isNumericHostname("0x.example.com") || !isNumericHostname("0x.1") {
 		t.Error("isNumericHostname misclassified a hostname")
 	}
 }
