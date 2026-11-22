@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"testing"
 	"testing/synctest"
+
+	"github.com/zekihan/sdash/config"
 )
 
 func TestServeWithShutdownDrainsActiveRequest(t *testing.T) {
@@ -189,5 +191,28 @@ func TestIPv6LoopbackListener(t *testing.T) {
 	err = conn.Close()
 	if err != nil {
 		t.Errorf("close IPv6 loopback connection: %v", err)
+	}
+}
+
+func TestPreferencesPath(t *testing.T) {
+	cfg := config.GetDefaultConfig()
+
+	cfg.Preferences.Path = "/data/custom.json"
+	if got := preferencesPath(cfg); got != "/data/custom.json" {
+		t.Errorf("preferencesPath() = %q, want explicit path", got)
+	}
+
+	cfg.Preferences.Path = ""
+
+	t.Setenv("CONFIG_DIR", "/data")
+
+	if got, want := preferencesPath(cfg), "/data/sdash-prefs.json"; got != want {
+		t.Errorf("preferencesPath() = %q, want %q", got, want)
+	}
+
+	t.Setenv("CONFIG_DIR", "")
+
+	if got, want := preferencesPath(cfg), "sdash-prefs.json"; got != want {
+		t.Errorf("preferencesPath() = %q, want %q", got, want)
 	}
 }
