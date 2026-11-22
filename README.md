@@ -96,7 +96,7 @@ services:
     healthInsecure: true                     # allow self-signed certs when probing
     # healthDisabled: true                   # never probe this service
     # openInNewTab: false
-    widget: {type: jellyfin}                 # sonarr | radarr | jellyfin; key in config.yaml
+    widget: {type: jellyfin}                 # sonarr | radarr | jellyfin | qbittorrent | immich | miniflux | forgejo | semaphore | paperless | syncthing | homeassistant; key in config.yaml
 ```
 
 The Kubernetes widget needs read-only RBAC: list/get on nodes, pods,
@@ -124,10 +124,15 @@ JSON, same auth as the UI. `GET /api/ping` and `GET /api/health` are public.
 | `GET /api/truenas` | TrueNAS version, pools, alerts |
 | `GET /api/gatus` | Gatus endpoint up/down summary |
 | `GET /api/service-widgets` | live per-service widget data (Sonarr/Radarr/Jellyfin/qBittorrent/Immich/Miniflux/Forgejo/Semaphore/Paperless/Syncthing/Home Assistant) |
+| `GET /api/calendar` | upcoming Sonarr/Radarr/Jellyfin calendar items |
+| `GET /api/media-rail` | recent Jellyfin media + Immich on-this-day photos |
+| `GET /api/arr/lookup?type=&term=` | Sonarr/Radarr title lookup for the add dialog |
+| `GET /api/jellyfin/image/{id}` | proxied Jellyfin artwork |
+| `GET /api/immich/thumbnail/{id}` | proxied Immich thumbnail (`size` query optional) |
 | `GET /api/pbs` | Proxmox Backup Server datastores + recent backup outcomes |
 | `GET /api/crowdsec` | CrowdSec active decision counts |
 | `GET/PUT /api/preferences` | server-synced dashboard preferences |
-| `POST /api/actions/*` | write actions (`argo-sync`, `restart`, `proxmox-start`, `wol`, `homeassistant`) — 403 unless `actions.enabled` |
+| `POST /api/actions/*` | write actions (`argo-sync`, `restart`, `proxmox-start`, `wol`, `homeassistant`, `qbittorrent-add`, `arr-add`) — 403 unless `actions.enabled` |
 | `GET /api/events` | SSE stream: `health` rounds and `config` reloads |
 | `GET /api/proxy/icon?url=...` | hardened icon proxy (below) |
 | `POST /api/logout` | clear the session cookie |

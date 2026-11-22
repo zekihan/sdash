@@ -401,3 +401,65 @@ func TestGetConfigRejectsInvalidPollingInterval(t *testing.T) {
 		})
 	}
 }
+
+func TestIntegrationConfig_Ready(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  IntegrationConfig
+		want bool
+	}{
+		{
+			name: "no URL",
+			cfg:  IntegrationConfig{URL: "", APIKey: "key", Username: "", Password: ""},
+			want: false,
+		},
+		{
+			name: "URL only",
+			cfg: IntegrationConfig{
+				URL:      "https://example.com",
+				APIKey:   "",
+				Username: "",
+				Password: "",
+			},
+			want: false,
+		},
+		{
+			name: "API key",
+			cfg: IntegrationConfig{
+				URL:      "https://example.com",
+				APIKey:   "key",
+				Username: "",
+				Password: "",
+			},
+			want: true,
+		},
+		{
+			name: "username only",
+			cfg: IntegrationConfig{
+				URL:      "https://example.com",
+				APIKey:   "",
+				Username: "user",
+				Password: "",
+			},
+			want: false,
+		},
+		{
+			name: "username and password",
+			cfg: IntegrationConfig{
+				URL:      "https://example.com",
+				APIKey:   "",
+				Username: "user",
+				Password: "pass",
+			},
+			want: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.cfg.Ready(); got != tc.want {
+				t.Errorf("Ready() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

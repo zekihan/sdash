@@ -21,6 +21,41 @@ func TestService_GetIconURL(t *testing.T) {
 	}
 }
 
+func TestService_ProbeURL(t *testing.T) {
+	service := new(Service)
+	service.URL = "https://example.com"
+
+	if got := service.ProbeURL(); got != service.URL {
+		t.Errorf("ProbeURL() = %v, want service URL %v", got, service.URL)
+	}
+
+	service.HealthURL = "https://example.com/health"
+	if got := service.ProbeURL(); got != service.HealthURL {
+		t.Errorf("ProbeURL() = %v, want health URL %v", got, service.HealthURL)
+	}
+}
+
+func TestService_IsHealthyStatus(t *testing.T) {
+	service := new(Service)
+
+	for _, code := range []int{200, 204, 301, 302, 401, 403} {
+		if !service.IsHealthyStatus(code) {
+			t.Errorf("IsHealthyStatus(%d) = false, want true with defaults", code)
+		}
+	}
+
+	for _, code := range []int{404, 500, 503} {
+		if service.IsHealthyStatus(code) {
+			t.Errorf("IsHealthyStatus(%d) = true, want false with defaults", code)
+		}
+	}
+
+	service.HealthStatuses = []int{200, 418}
+	if !service.IsHealthyStatus(418) || service.IsHealthyStatus(401) {
+		t.Error("explicit healthStatuses must replace the default accepted codes")
+	}
+}
+
 func TestConfig_postProcessServices(t *testing.T) {
 	cfg := new(Config)
 	cfg.Services = map[string]*Service{
