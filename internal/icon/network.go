@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -72,12 +73,60 @@ func parseIconURL(rawURL string) (*url.URL, error) {
 		return nil, errInvalidDestination
 	}
 
-	address, parseErr := netip.ParseAddr(parsed.Hostname())
-	if parseErr == nil && !publicAddress(address) {
+	if !hostnameAllowed(parsed.Hostname()) {
 		return nil, errInvalidDestination
 	}
 
 	return parsed, nil
+}
+
+// hostnameAllowed accepts DNS names and public IP literals. Shorthand
+// inet_aton forms (127.1, 2130706433, 0x7f000001, 0177.0.0.1) are not netip
+// literals, but resolvers map them onto IPv4 addresses. A hostname whose
+// labels are all numeric cannot be a public DNS name (the TLD is never
+// all-numeric), so reject it here instead of relying solely on the dialer's
+// resolved-address check.
+func hostnameAllowed(host string) bool {
+	address, parseErr := netip.ParseAddr(host)
+	if parseErr == nil {
+		return publicAddress(address)
+	}
+
+	return !isNumericHostname(host)
+}
+
+func isNumericHostname(host string) bool {
+	for label := range strings.SplitSeq(host, ".") {
+		if label == "" {
+			return false
+		}
+
+		digits := label
+		hexadecimal := false
+
+		if lower := strings.ToLower(label); strings.HasPrefix(lower, "0x") {
+			digits, hexadecimal = label[2:], true
+		}
+
+		if digits == "" {
+			if !hexadecimal {
+				return false
+			}
+
+			continue
+		}
+
+		for _, ch := range digits {
+			isDigit := ch >= '0' && ch <= '9'
+
+			isHexLetter := (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
+			if !isDigit && (!hexadecimal || !isHexLetter) {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 type (
