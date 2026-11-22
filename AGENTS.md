@@ -75,6 +75,10 @@ unkeyed services to `others`, creates missing groups, sorts per
   guests, shared storage deduped) with a PVEAuditor API token.
 - `internal/truenasinfo` — TrueNAS REST v2 summary (system info, pools,
   undismissed alerts) with a Bearer API key.
+- `internal/pbsinfo` — Proxmox Backup Server datastore/backup summary with a
+  Datastore.Audit API token.
+- `internal/crowdsecinfo` — CrowdSec LAPI active-decision counts with a
+  bouncer API key.
 - `internal/appwidgets` — Sonarr/Radarr/Jellyfin live card data; keys from
   `integrations` config only, results cached 30s and shared per widget type.
 - `internal/icon` — hardened icon proxy (public-IP-only, re-encodes to PNG,
@@ -88,7 +92,11 @@ unkeyed services to `others`, creates missing groups, sorts per
 `/api/me`, `/api/dashboard`, `/api/health/services`, `/api/system`,
 `/api/docker`, `/api/weather`, `/api/kubernetes`, `/api/proxmox`,
 `/api/truenas`, `/api/gatus`,
-`/api/service-widgets`, `/api/events` (SSE), `/api/proxy/icon`,
+`/api/service-widgets`, `/api/calendar`, `/api/media-rail`,
+`/api/arr/lookup`, `/api/jellyfin/image/{id}`, `/api/immich/thumbnail/{id}`,
+`/api/pbs`, `/api/crowdsec`, `GET/PUT /api/preferences`,
+`POST /api/actions/*` (incl. `qbittorrent-add`, `arr-add`),
+`/api/events` (SSE), `/api/proxy/icon`,
 `POST /api/logout`; public `/api/ping`, `/api/health`; OIDC at
 `/login`, `/login/{oidc}`, `/user/oauth2/{oidc}/callback`. Everything else
 serves the SPA (`web/embed.go` embeds `web/dist`).
@@ -97,7 +105,9 @@ serves the SPA (`web/embed.go` embeds `web/dist`).
 
 `web/src`: `App.tsx` orchestrates loading/SSE/polling/prefs; components in
 `web/src/components`, helpers in `web/src/lib`. Client prefs (theme, accent,
-density, layout, pins, recents) live in localStorage (`sdash:prefs:v1`) —
+density, layout, pins, recents) live in localStorage (`sdash:prefs:v1`) and,
+when `preferences.enabled`, also sync via `GET/PUT /api/preferences`
+(server copy wins on load when present) —
 save failures must surface as a toast, never silently drop. Search is
 client-side fuzzy matching over the `/api/dashboard` payload. Theming is CSS
 variables (`data-theme`/`data-accent` on `<html>`, tokens in `index.css`)
