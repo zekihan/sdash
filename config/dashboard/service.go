@@ -32,7 +32,7 @@ type Service struct {
 }
 
 // Widget optionally attaches live data to a service card. Type selects the
-// integration (e.g. "customapi"); options are passed through to the client.
+// integration (e.g. "sonarr"); options are passed through to the client.
 type Widget struct {
 	Options map[string]any `yaml:"options"`
 	Type    string         `yaml:"type"`
