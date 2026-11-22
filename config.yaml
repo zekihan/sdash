@@ -10,7 +10,6 @@ dashboard:
     reload:
         enabled: true
         pollInterval: 30s
-        useModTime: false
         useFsNotify: true
         continueOnError: true
 # Live health probing of every service in dashboard.yaml.

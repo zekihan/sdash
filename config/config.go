@@ -203,6 +203,7 @@ type WeatherConfig struct {
 	Enabled   bool    `yaml:"enabled"   env:"ENABLED"`
 }
 
+// WebConfig controls the HTTP listener, public base URL and session cookie.
 type WebConfig struct {
 	BaseURL        string        `yaml:"baseUrl"        env:"BASE_URL"`
 	Host           string        `yaml:"host"           env:"HOST"`
@@ -213,24 +214,28 @@ type WebConfig struct {
 	SessionTimeout time.Duration `yaml:"sessionTimeout" env:"SESSION_TIMEOUT"`
 }
 
+// LogConfig controls log verbosity; Level is parsed from LevelStr at startup.
 type LogConfig struct {
 	LevelStr  string     `yaml:"level"     env:"LEVEL"`
 	Level     slog.Level `yaml:"-"`
 	AddSource bool       `yaml:"addSource" env:"ADD_SOURCE"`
 }
 
+// Dashboard holds settings for the separate dashboard.yaml file.
 type Dashboard struct {
 	Reload Reload `yaml:"reload" env:", prefix=RELOAD_"`
 }
 
+// Reload controls dashboard.yaml hot reload: fsnotify when UseFsNotify is
+// set, otherwise modification-time polling every PollInterval.
 type Reload struct {
 	PollInterval    time.Duration `yaml:"pollInterval"    env:"POLL_INTERVAL"`
 	Enabled         bool          `yaml:"enabled"         env:"ENABLED"`
 	ContinueOnError bool          `yaml:"continueOnError" env:"CONTINUE_ON_ERROR"`
-	UseModTime      bool          `yaml:"useModTime"      env:"USE_MOD_TIME"`
 	UseFsNotify     bool          `yaml:"useFsNotify"     env:"USE_FS_NOTIFY"`
 }
 
+// OidcConfig is one named OIDC provider; providers are keyed by name in YAML.
 type OidcConfig struct {
 	ClientID          string `yaml:"clientId"          env:"CLIENT_ID"`
 	ClientSecret      string `yaml:"clientSecret"      env:"CLIENT_SECRET"`
@@ -452,7 +457,6 @@ func GetDefaultConfig() *Config {
 	cfg.Dashboard.Reload.Enabled = false
 	cfg.Dashboard.Reload.ContinueOnError = false
 	cfg.Dashboard.Reload.PollInterval = defaultPollInterval
-	cfg.Dashboard.Reload.UseModTime = true
 	cfg.Dashboard.Reload.UseFsNotify = false
 	cfg.Health.Enabled = true
 	cfg.Health.Interval = defaultHealthInterval
