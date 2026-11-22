@@ -56,6 +56,7 @@ audit: tidy
 ## test: run all tests
 .PHONY: test
 test:
+	npm --prefix web test
 	./scripts/go_test.sh -v -buildvcs -vet=all ./...
 	./scripts/go_test.sh -v -buildvcs -vet=all -race ./...
 
