@@ -210,6 +210,7 @@ type WebConfig struct {
 	AuthCookie     string        `yaml:"authCookie"     env:"AUTH_COOKIE"`
 	CookieHashKey  string        `yaml:"cookieHashKey"  env:"COOKIE_HASH_KEY"`
 	CookieBlockKey string        `yaml:"cookieBlockKey" env:"COOKIE_BLOCK_KEY"`
+	MetricsAddr    string        `yaml:"metricsAddr"    env:"METRICS_ADDR"`
 	Port           int           `yaml:"port"           env:"PORT"`
 	SessionTimeout time.Duration `yaml:"sessionTimeout" env:"SESSION_TIMEOUT"`
 }
@@ -450,6 +451,7 @@ func GetDefaultConfig() *Config {
 	cfg.WebConfig.BaseURL = "http://localhost:" + strconv.Itoa(defaultPort)
 	cfg.WebConfig.Port = defaultPort
 	cfg.WebConfig.Host = "127.0.0.1"
+	cfg.WebConfig.MetricsAddr = ":9090"
 	cfg.WebConfig.AuthCookie = "SDS__AUTH"
 	cfg.WebConfig.SessionTimeout = defaultSessionTimeout
 	cfg.LogConfig.Level = slog.LevelWarn

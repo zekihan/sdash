@@ -21,6 +21,10 @@ func TestGetDefaultConfig(t *testing.T) {
 		t.Errorf("expected default BaseURL, got %s", cfg.WebConfig.BaseURL)
 	}
 
+	if cfg.WebConfig.MetricsAddr != ":9090" {
+		t.Errorf("expected default metrics addr :9090, got %s", cfg.WebConfig.MetricsAddr)
+	}
+
 	if cfg.LogConfig.Level != slog.LevelWarn {
 		t.Errorf("expected default log level 3, got %d", cfg.LogConfig.Level)
 	}
