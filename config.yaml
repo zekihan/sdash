@@ -2,6 +2,10 @@ web:
     baseUrl: http://localhost:33000
     host: 127.0.0.1
     port: 33000
+    # Internal Prometheus metrics listener at /metrics (VictoriaMetrics
+    # scrapes it; never exposed through the public ingress). Empty disables
+    # it. Env override: SDS__WEB_METRICS_ADDR.
+    metricsAddr: :9090
 #    cookieHashKey: ""
 #    cookieBlockKey: ""
 log:

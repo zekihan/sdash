@@ -43,7 +43,7 @@ prefix (e.g. `SDS__WEB_PORT=8080`, `SDS__HEALTH_INTERVAL=15s`,
 
 | Section | What it controls |
 |---|---|
-| `web` | listen host/port, public `baseUrl`, session lifetime, cookie keys |
+| `web` | listen host/port, public `baseUrl`, session lifetime, cookie keys, internal `metricsAddr` (`:9090`, `/metrics`; empty disables it) |
 | `log` | level, source locations |
 | `dashboard.reload` | hot-reload of `dashboard.yaml` (fsnotify or mod-time polling) |
 | `health` | service prober: `enabled`, `interval`, `timeout`, samples of `history` |

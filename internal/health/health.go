@@ -16,6 +16,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/zekihan/go-commons/metrics"
+
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/config/dashboard"
 )
@@ -100,6 +102,7 @@ type Monitor struct {
 	insecure  *http.Client
 	targets   func() []*dashboard.Service
 	entries   map[string]*entry
+	metrics   *metrics.Registry
 	listeners []ChangeListener
 	cfg       config.HealthConfig
 	mu        sync.RWMutex
@@ -290,6 +293,8 @@ func (monitor *Monitor) record(
 			delete(monitor.entries, key)
 		}
 	}
+
+	monitor.observeLocked(results)
 
 	listeners := make([]ChangeListener, len(monitor.listeners))
 	copy(listeners, monitor.listeners)

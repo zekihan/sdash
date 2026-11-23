@@ -16,6 +16,7 @@ import (
 
 	"github.com/zekihan/go-commons/cookie"
 	"github.com/zekihan/go-commons/environment"
+	"github.com/zekihan/go-commons/metrics"
 	"github.com/zekihan/go-commons/middleware"
 	"github.com/zekihan/go-commons/utils"
 
@@ -79,9 +80,12 @@ func run() error {
 
 	go dashboard.WatchConfigFile()
 
+	registry := metrics.New()
+
 	monitor := health.New(cfg.Health, func() []*dashboard.Service {
 		return dashboard.GetConfigWithContext(ctx).ServicesList
 	})
+	monitor.ObserveMetrics(registry)
 
 	deps := buildDeps(ctx, cfg, monitor)
 
@@ -95,12 +99,20 @@ func run() error {
 
 	httpServer := new(http.Server)
 	httpServer.Addr = addr
-	httpServer.Handler = middleware.RecoverHandler(requestlog.Logging(srv.Handler()))
+	httpServer.Handler = registry.Middleware(
+		middleware.RecoverHandler(requestlog.Logging(srv.Handler())),
+	)
 	httpServer.ReadHeaderTimeout = readHeaderTimeout
 	httpServer.IdleTimeout = idleTimeout
 
 	slog.InfoContext(ctx, "Listening on http://"+addr,
 		slog.String("baseUrl", cfg.WebConfig.BaseURL))
+
+	if cfg.WebConfig.MetricsAddr != "" {
+		slog.InfoContext(ctx, "Serving metrics on http://"+cfg.WebConfig.MetricsAddr+"/metrics")
+
+		go serveMetrics(ctx, cfg.WebConfig.MetricsAddr, registry)
+	}
 
 	return serveWithShutdown(ctx, httpServer.ListenAndServe, httpServer.Shutdown)
 }
@@ -181,6 +193,20 @@ func preferencesPath(cfg *config.Config) string {
 	}
 
 	return filepath.Join(dir, "sdash-prefs.json")
+}
+
+// serveMetrics runs the internal /metrics listener until ctx is canceled.
+// An empty addr disables the listener. It is never served on the public
+// ingress.
+func serveMetrics(ctx context.Context, addr string, registry *metrics.Registry) {
+	if addr == "" {
+		return
+	}
+
+	err := registry.ListenAndServe(ctx, addr)
+	if err != nil {
+		slog.ErrorContext(ctx, "Metrics server failed", slog.Any("error", err))
+	}
 }
 
 func serveWithShutdown(
