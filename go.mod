@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/securecookie v1.1.2
 	github.com/oauth2-proxy/mockoidc v0.0.0-20261103160011-e06ed0b7cb7f
 	github.com/sethvargo/go-envconfig/v2 v2.0.0
-	github.com/zekihan/go-commons v1.1.0
+	github.com/zekihan/go-commons v1.2.0
 	golang.org/x/oauth2 v0.38.0
 	golang.org/x/sys v0.50.0
 	gopkg.in/yaml.v3 v3.0.1
