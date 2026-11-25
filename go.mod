@@ -28,5 +28,3 @@ require (
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
 )
-
-//replace github.com/zekihan/go-commons => ../go-commons
