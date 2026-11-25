@@ -10,11 +10,13 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/zekihan/sdash/config"
 	"github.com/zekihan/sdash/internal/appwidgets"
 	"github.com/zekihan/sdash/internal/kubeinfo"
 	"github.com/zekihan/sdash/internal/proxmoxinfo"
+	"github.com/zekihan/sdash/session/auth"
 )
 
 var allActionPaths = []string{
@@ -36,6 +38,8 @@ func postAction(t *testing.T, handler http.Handler, path, body string) *httptest
 		path,
 		strings.NewReader(body),
 	)
+	req.Header.Set("Content-Type", "application/json")
+
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -138,6 +142,138 @@ func actionDeps(cfg *config.Config) *Deps {
 	deps.Config = cfg
 
 	return deps
+}
+
+func TestCrossOriginWritesRejected(t *testing.T) {
+	saveAuthState(t)
+
+	auth.Enabled = true
+
+	cfg := config.GetDefaultConfig()
+	cfg.Actions.Enabled = true
+	cfg.WebConfig.SessionTimeout = time.Hour
+	deps := actionDeps(cfg)
+	kube, backend := fakeKube(t, http.StatusOK)
+	deps.Kube = kube
+	prefsPath := filepath.Join(t.TempDir(), "prefs.json")
+	deps.Prefs = NewPreferenceStore(prefsPath)
+	handler := New(deps).Handler()
+	sessionCookie := mintSessionCookie(t, cfg)
+
+	for _, path := range allActionPaths {
+		t.Run(strings.TrimPrefix(path, "/api/actions/"), func(t *testing.T) {
+			req := httptest.NewRequestWithContext(
+				t.Context(), http.MethodPost, "https://dashboard.example.test"+path, http.NoBody,
+			)
+			req.Header.Set("Origin", "https://sibling.example.test")
+			req.Header.Set("Sec-Fetch-Site", "same-site")
+			req.Header.Set("Content-Type", "text/plain")
+			req.AddCookie(sessionCookie)
+
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusForbidden {
+				t.Errorf("status = %d, want 403 (%s)", rec.Code, rec.Body.String())
+			}
+		})
+	}
+
+	req := httptest.NewRequestWithContext(
+		t.Context(), http.MethodPut, "https://dashboard.example.test/api/preferences", http.NoBody,
+	)
+	req.Header.Set("Origin", "https://sibling.example.test")
+	req.AddCookie(sessionCookie)
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("preferences status = %d, want 403 (%s)", rec.Code, rec.Body.String())
+	}
+
+	_, err := os.Stat(prefsPath)
+	if !os.IsNotExist(err) {
+		t.Errorf("preferences file should be absent, stat error = %v", err)
+	}
+
+	if calls := len(backend.all()); calls != 0 {
+		t.Errorf("backend calls = %d, want 0", calls)
+	}
+}
+
+func TestCrossOriginActionAllowsSameOriginJSON(t *testing.T) {
+	saveAuthState(t)
+
+	auth.Enabled = true
+
+	cfg := config.GetDefaultConfig()
+	cfg.Actions.Enabled = true
+	cfg.WebConfig.SessionTimeout = time.Hour
+	deps := actionDeps(cfg)
+	kube, backend := fakeKube(t, http.StatusOK)
+	deps.Kube = kube
+	handler := New(deps).Handler()
+	sessionCookie := mintSessionCookie(t, cfg)
+
+	tests := []struct {
+		name        string
+		contentType string
+		body        string
+		status      int
+	}{
+		{
+			name:        "plain text",
+			contentType: "text/plain",
+			body:        `{}`,
+			status:      http.StatusUnsupportedMediaType,
+		},
+		{
+			name:        "missing type",
+			contentType: "",
+			body:        `{}`,
+			status:      http.StatusUnsupportedMediaType,
+		},
+		{
+			name:        "JSON",
+			contentType: "application/json",
+			body:        `{"app":"test-app"}`,
+			status:      http.StatusOK,
+		},
+		{
+			name: "JSON with charset", contentType: "application/json; charset=utf-8",
+			body: `{"app":"test-app"}`, status: http.StatusOK,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequestWithContext(
+				t.Context(),
+				http.MethodPost,
+				"https://dashboard.example.test/api/actions/argo-sync",
+				strings.NewReader(tc.body),
+			)
+			req.Header.Set("Origin", "https://dashboard.example.test")
+			req.Header.Set("Sec-Fetch-Site", "same-origin")
+
+			if tc.contentType != "" {
+				req.Header.Set("Content-Type", tc.contentType)
+			}
+
+			req.AddCookie(sessionCookie)
+
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			if rec.Code != tc.status {
+				t.Errorf("status = %d, want %d (%s)", rec.Code, tc.status, rec.Body.String())
+			}
+		})
+	}
+
+	if calls := len(backend.all()); calls != 2 {
+		t.Errorf("backend calls = %d, want 2", calls)
+	}
 }
 
 // --- gating ----------------------------------------------------------------

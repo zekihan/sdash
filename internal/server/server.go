@@ -94,6 +94,10 @@ func (srv *Server) routes() {
 	protected := func(handler http.HandlerFunc) http.Handler {
 		return srv.requireAuth(handler)
 	}
+	crossOrigin := http.NewCrossOriginProtection()
+	protectedWrite := func(handler http.HandlerFunc) http.Handler {
+		return protected(crossOrigin.Handler(handler).ServeHTTP)
+	}
 
 	srv.mux.HandleFunc("GET /api/ping", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "pong"})
@@ -120,14 +124,14 @@ func (srv *Server) routes() {
 	srv.mux.Handle("GET /api/truenas", protected(srv.handleTrueNAS))
 	srv.mux.Handle("GET /api/crowdsec", protected(srv.handleCrowdSec))
 	srv.mux.Handle("GET /api/preferences", protected(srv.handleGetPreferences))
-	srv.mux.Handle("PUT /api/preferences", protected(srv.handlePutPreferences))
-	srv.mux.Handle("POST /api/actions/argo-sync", protected(srv.handleArgoSync))
-	srv.mux.Handle("POST /api/actions/restart", protected(srv.handleRestartDeployment))
-	srv.mux.Handle("POST /api/actions/proxmox-start", protected(srv.handleProxmoxStart))
-	srv.mux.Handle("POST /api/actions/wol", protected(srv.handleWakeOnLan))
-	srv.mux.Handle("POST /api/actions/homeassistant", protected(srv.handleHomeAssistantToggle))
-	srv.mux.Handle("POST /api/actions/qbittorrent-add", protected(srv.handleQBittorrentAdd))
-	srv.mux.Handle("POST /api/actions/arr-add", protected(srv.handleArrAdd))
+	srv.mux.Handle("PUT /api/preferences", protectedWrite(srv.handlePutPreferences))
+	srv.mux.Handle("POST /api/actions/argo-sync", protectedWrite(srv.handleArgoSync))
+	srv.mux.Handle("POST /api/actions/restart", protectedWrite(srv.handleRestartDeployment))
+	srv.mux.Handle("POST /api/actions/proxmox-start", protectedWrite(srv.handleProxmoxStart))
+	srv.mux.Handle("POST /api/actions/wol", protectedWrite(srv.handleWakeOnLan))
+	srv.mux.Handle("POST /api/actions/homeassistant", protectedWrite(srv.handleHomeAssistantToggle))
+	srv.mux.Handle("POST /api/actions/qbittorrent-add", protectedWrite(srv.handleQBittorrentAdd))
+	srv.mux.Handle("POST /api/actions/arr-add", protectedWrite(srv.handleArrAdd))
 	srv.mux.Handle("GET /api/calendar", protected(srv.handleCalendar))
 	srv.mux.Handle("GET /api/media-rail", protected(srv.handleMediaRail))
 	srv.mux.Handle("GET /api/arr/lookup", protected(srv.handleArrLookup))
