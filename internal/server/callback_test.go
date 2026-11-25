@@ -13,10 +13,10 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/oauth2-proxy/mockoidc"
 	"github.com/zekihan/go-commons/cookie"
+	"github.com/zekihan/go-commons/middleware"
 	"golang.org/x/oauth2"
 
 	"github.com/zekihan/sdash/config"
-	"github.com/zekihan/sdash/requestlog"
 	"github.com/zekihan/sdash/session/auth"
 )
 
@@ -254,7 +254,7 @@ func loggedCallback(t *testing.T, req *http.Request, state string) *httptest.Res
 	defer slog.SetDefault(originalLogger)
 
 	rec := httptest.NewRecorder()
-	requestlog.Logging(http.HandlerFunc(AuthCallback)).ServeHTTP(rec, req)
+	middleware.Logging(http.HandlerFunc(AuthCallback)).ServeHTTP(rec, req)
 
 	for _, secret := range []string{"code-secret", "state-secret", state, req.URL.Query().Get("code")} {
 		if secret != "" &&
