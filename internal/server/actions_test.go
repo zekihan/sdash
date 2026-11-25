@@ -3,8 +3,6 @@ package server
 import (
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/zekihan/sdash/config"
@@ -26,9 +24,7 @@ func TestWriteActionsGating(t *testing.T) {
 	handler := New(deps).Handler()
 
 	for _, path := range paths {
-		rec := httptest.NewRecorder()
-		handler.ServeHTTP(rec, httptest.NewRequestWithContext(
-			t.Context(), http.MethodPost, path, strings.NewReader(`{}`)))
+		rec := postAction(t, handler, path, `{}`)
 
 		if rec.Code != http.StatusForbidden {
 			t.Errorf(
@@ -48,9 +44,7 @@ func TestWriteActionsGating(t *testing.T) {
 		"/api/actions/argo-sync", "/api/actions/restart",
 		"/api/actions/proxmox-start", "/api/actions/homeassistant",
 	} {
-		rec := httptest.NewRecorder()
-		handler.ServeHTTP(rec, httptest.NewRequestWithContext(
-			t.Context(), http.MethodPost, path, strings.NewReader(`{}`)))
+		rec := postAction(t, handler, path, `{}`)
 
 		if rec.Code != http.StatusServiceUnavailable {
 			t.Errorf(
@@ -62,17 +56,13 @@ func TestWriteActionsGating(t *testing.T) {
 		}
 	}
 
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, httptest.NewRequestWithContext(
-		t.Context(), http.MethodPost, "/api/actions/wol", strings.NewReader(`{"name":"nope"}`)))
+	rec := postAction(t, handler, "/api/actions/wol", `{"name":"nope"}`)
 
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("POST wol unknown host = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 
-	rec = httptest.NewRecorder()
-	handler.ServeHTTP(rec, httptest.NewRequestWithContext(
-		t.Context(), http.MethodPost, "/api/actions/wol", strings.NewReader(`{`)))
+	rec = postAction(t, handler, "/api/actions/wol", `{`)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("POST wol malformed body = %d, want %d", rec.Code, http.StatusBadRequest)
@@ -99,14 +89,7 @@ func TestArgoSyncRejectsInvalidRequest(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			request := httptest.NewRequestWithContext(
-				t.Context(),
-				http.MethodPost,
-				"/api/actions/argo-sync",
-				strings.NewReader(tc.body),
-			)
-			rec := httptest.NewRecorder()
-			handler.ServeHTTP(rec, request)
+			rec := postAction(t, handler, "/api/actions/argo-sync", tc.body)
 
 			if rec.Code != http.StatusBadRequest {
 				t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)

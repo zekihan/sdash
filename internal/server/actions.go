@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime"
 	"net"
 	"net/http"
 	"os"
@@ -43,6 +44,13 @@ func (srv *Server) actionsEnabled(w http.ResponseWriter) bool {
 }
 
 func decodeAction(w http.ResponseWriter, r *http.Request, out any) bool {
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || mediaType != "application/json" {
+		writeError(w, http.StatusUnsupportedMediaType, "Content-Type must be application/json")
+
+		return false
+	}
+
 	body, err := io.ReadAll(io.LimitReader(r.Body, maxPrefsBytes))
 	if err != nil || json.Unmarshal(body, out) != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
