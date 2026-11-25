@@ -20,64 +20,20 @@ permissions:
   contents: read
 
 jobs:
+  checks:
+    uses: zekihan/release-workflows/.github/workflows/go-checks.yaml@98a85ab2b0ae4dd702aa142b1369277404f124df # main
+    with:
+      node-version: '26.x'
+      node-cache-dependency-path: web/package-lock.json
+      prepare-command: |
+        sudo apt-get update -qq
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends make build-essential
+        sh .github/scripts/install_build_deps.sh
+        npm --prefix web run build
+
   pr:
+    needs: checks
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - name: Check Out The Repo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-          ref: ${{ github.sha }}
-      - name: Set up Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: '26.x'
-          cache: 'npm'
-          cache-dependency-path: web/package-lock.json
-
-      - name: Set up Go
-        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
-        with:
-          go-version-file: go.mod
-          cache: true
-          cache-dependency-path: go.sum
-
-      - name: Set up GoReleaser
-        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
-        with:
-          install-only: true
-
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends make build-essential
-          sh .github/scripts/install_build_deps.sh
-          npm --prefix web run build
-
-      - name: Tidy
-        run: |
-          make tidy
-
-      - name: Check for reachable Go vulnerabilities
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-
-      - name: Lint
-        run: |
-          make lint
-
-      - name: Fail if there are any changes
-        run: |
-          git diff --exit-code
-
-      - name: Test
-        run: |
-          make test
-
-      - name: Build
-        run: |
-          goreleaser build --clean --snapshot --single-target --id all --skip=before
+      - run: test "${{ needs.checks.result }}" = success
