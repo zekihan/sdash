@@ -9,8 +9,6 @@ import (
 
 	"github.com/zekihan/go-commons/metrics"
 	"github.com/zekihan/go-commons/middleware"
-
-	"github.com/zekihan/sdash/requestlog"
 )
 
 // TestMiddlewareRecordsMuxPattern serves a request through the production
@@ -23,7 +21,7 @@ func TestMiddlewareRecordsMuxPattern(t *testing.T) {
 
 	registry := metrics.New()
 	chain := registry.Middleware(
-		middleware.RecoverHandler(requestlog.Logging(srv.Handler())),
+		middleware.RecoverHandler(middleware.Logging(srv.Handler())),
 	)
 
 	response := httptest.NewRecorder()

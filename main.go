@@ -34,7 +34,6 @@ import (
 	"github.com/zekihan/sdash/internal/server"
 	"github.com/zekihan/sdash/internal/truenasinfo"
 	"github.com/zekihan/sdash/internal/weather"
-	"github.com/zekihan/sdash/requestlog"
 	"github.com/zekihan/sdash/session/auth"
 )
 
@@ -100,7 +99,7 @@ func run() error {
 	httpServer := new(http.Server)
 	httpServer.Addr = addr
 	httpServer.Handler = registry.Middleware(
-		middleware.RecoverHandler(requestlog.Logging(srv.Handler())),
+		middleware.RecoverHandler(middleware.Logging(srv.Handler())),
 	)
 	httpServer.ReadHeaderTimeout = readHeaderTimeout
 	httpServer.IdleTimeout = idleTimeout

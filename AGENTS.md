@@ -85,7 +85,7 @@ unkeyed services to `others`, creates missing groups, sorts per
   bounded cache/concurrency/rate). Kept from 1.x; see README before touching.
 - `session/auth` — OIDC provider init; auth is on only when ≥1 provider is
   enabled. Sessions are go-commons secure cookies.
-- `requestlog` — credential-safe access logs (no query strings/headers).
+- `go-commons/middleware` — credential-safe access logs (no query strings/headers).
 
 ### API surface
 

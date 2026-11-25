@@ -1,4 +1,4 @@
-package requestlog
+package main
 
 import (
 	"bytes"
@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/zekihan/go-commons/middleware"
 )
 
 func TestLoggingExcludesCredentials(t *testing.T) {
@@ -27,13 +29,15 @@ func TestLoggingExcludesCredentials(t *testing.T) {
 			req.Header.Set("Authorization", "Bearer header-secret")
 			req.Header.Set("Cookie", "auth=cookie-secret")
 
-			handler := Logging(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.RawQuery == "" {
-					t.Error("logger removed handler query")
-				}
+			handler := middleware.Logging(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.RawQuery == "" {
+						t.Error("logger removed handler query")
+					}
 
-				w.WriteHeader(status)
-			}))
+					w.WriteHeader(status)
+				}),
+			)
 			handler.ServeHTTP(httptest.NewRecorder(), req)
 			slog.SetDefault(original)
 
