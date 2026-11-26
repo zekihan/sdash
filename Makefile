@@ -9,7 +9,7 @@ GO_EXECUTABLE := go
 ## web: install frontend dependencies and build the web UI into web/dist
 .PHONY: web
 web:
-	npm --prefix web ci
+	sh .github/scripts/install_build_deps.sh
 	npm --prefix web run build
 
 ## web/dev: run the Vite dev server (proxies /api to the Go server on :33000)
@@ -44,6 +44,7 @@ tidy:
 ## lint: run linter
 .PHONY: lint
 lint: tidy
+	node web/scripts/check-install-scripts.mjs
 	golangci-lint fmt
 	golangci-lint run --fix > /dev/null 2>&1 || true
 	golangci-lint run

@@ -4,11 +4,16 @@ Prerequisites: Go (see `go.mod`), Node 24+ with npm, GoReleaser and
 golangci-lint for release/lint targets.
 
 Run `sh .github/scripts/install_build_deps.sh` (or `make web`) before building.
-It runs `npm ci --prefix web`, which installs exactly what
-`web/package-lock.json` pins and verifies every tarball against the lockfile
-integrity hashes. The only approved package install script is esbuild's,
-recorded under `allowScripts` in `web/package.json`; approving another one is
-a reviewed change to that file.
+The installer runs `npm ci --prefix web --ignore-scripts`, which installs
+from `web/package-lock.json`, verifies tarball integrity, and disables all
+install lifecycle scripts. The build runs without a dependency rebuild.
+
+`make lint` checks dependency entries marked `hasInstallScript` in the
+lockfile against the reviewed `allowScripts` in `web/package.json`. Each
+entry requires an exact `name@version` approval set to `true`. The check
+targets Linux on every host and exempts optional packages whose OS metadata
+excludes Linux, such as `fsevents`. The PR and publication checks both run
+this lint rule.
 
 `make web` then builds the frontend into `web/dist`, which the Go binary
 embeds. `web/dist` itself is not committed (only a `.gitkeep` placeholder, so
