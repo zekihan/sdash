@@ -1,8 +1,11 @@
 package pbsinfo
 
 import (
+	"bytes"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/zekihan/sdash/config"
@@ -61,5 +64,67 @@ func TestSummary(t *testing.T) {
 	if !summary.HasBackups || summary.LastBackupAt != 400 {
 		t.Errorf("last backup = %d, has backups = %v, want a completed backup at 400",
 			summary.LastBackupAt, summary.HasBackups)
+	}
+
+	if summary.TasksUnavailable {
+		t.Error("readable backup task list was marked unavailable")
+	}
+}
+
+func TestSummaryTasksUnavailable(t *testing.T) {
+	token := "fixture-" + t.Name()
+
+	var logs bytes.Buffer
+
+	originalLogger := slog.Default()
+
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(originalLogger) })
+
+	mux := http.NewServeMux()
+	mux.HandleFunc(
+		"/api2/json/status/datastore-usage",
+		func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`{"data":[{"store":"backups","total":1000,"used":400}]}`))
+		},
+	)
+	mux.HandleFunc(
+		"/api2/json/nodes/localhost/tasks",
+		func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, token, http.StatusForbidden)
+		},
+	)
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	cfg := new(config.PBSConfig)
+	cfg.URL = server.URL
+	cfg.APIToken = token
+
+	summary, err := New(*cfg).Summary(t.Context())
+	if err != nil {
+		t.Fatalf("Summary: %v", err)
+	}
+
+	if !summary.TasksUnavailable || !summary.Available || len(summary.Datastores) != 1 {
+		t.Fatalf(
+			"summary = %+v, want available datastore usage and unavailable backup tasks",
+			summary,
+		)
+	}
+
+	if summary.Used != 400 || summary.Total != 1000 {
+		t.Errorf("datastore usage = %d/%d, want 400/1000", summary.Used, summary.Total)
+	}
+
+	output := logs.String()
+	if !strings.Contains(output, "level=WARN") ||
+		!strings.Contains(output, "PBS backup task fetch failed") {
+		t.Error("expected a warning for the backup task fetch failure")
+	}
+
+	if strings.Contains(output, token) {
+		t.Error("warning contains the PBS token")
 	}
 }
