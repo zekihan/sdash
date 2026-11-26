@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ const (
 	cpuFieldCount = 5
 	idleField     = 3
 	iowaitField   = 4
+	guestField    = 8
 	memFieldCount = 2
 	loadFieldCnt  = 3
 	floatBitSize  = 64
@@ -93,22 +95,28 @@ func cpuUtilization(previous, current cpuTimes) float64 {
 }
 
 func readCPUTimes() (cpuTimes, error) {
-	times := new(cpuTimes)
-
 	file, err := os.Open("/proc/stat")
 	if err != nil {
-		return *times, fmt.Errorf("open /proc/stat: %w", err)
+		return cpuTimes{}, fmt.Errorf("open /proc/stat: %w", err)
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
+	return parseCPUTimes(file)
+}
+
+func parseCPUTimes(reader io.Reader) (cpuTimes, error) {
+	var times cpuTimes
+
+	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		fields := strings.Fields(scanner.Text())
 		if len(fields) < cpuFieldCount || fields[0] != "cpu" {
 			continue
 		}
 
-		for index, field := range fields[1:] {
+		// Linux already includes guest in user and guest_nice in nice.
+		counters := fields[1:]
+		for index, field := range counters[:min(len(counters), guestField)] {
 			value, parseErr := strconv.ParseUint(field, decimalBase, uintBitSize)
 			if parseErr != nil {
 				continue
@@ -120,10 +128,10 @@ func readCPUTimes() (cpuTimes, error) {
 			}
 		}
 
-		return *times, nil
+		return times, nil
 	}
 
-	return *times, errNoCPULine
+	return times, errNoCPULine
 }
 
 func readMem(info *Info) {
