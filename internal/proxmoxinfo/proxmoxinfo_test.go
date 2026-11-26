@@ -1,13 +1,70 @@
 package proxmoxinfo
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/zekihan/sdash/config"
 )
+
+func TestValidNodeName(t *testing.T) {
+	for _, node := range []string{"pve1", "PVE-01", "a", "8", strings.Repeat("a", 63)} {
+		if !ValidNodeName(node) {
+			t.Errorf("ValidNodeName(%q) = false, want true", node)
+		}
+	}
+
+	for _, node := range []string{
+		"", "-pve", "pve-", "pve.local", "pve_1", "pve 1", "pvé", "pve\n",
+		"pve/", "pve\\", "pve%", "pve?", "pve#", strings.Repeat("a", 64),
+	} {
+		if ValidNodeName(node) {
+			t.Errorf("ValidNodeName(%q) = true, want false", node)
+		}
+	}
+}
+
+func TestStartGuestValidatesNode(t *testing.T) {
+	var requests atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+
+		if r.Method != http.MethodPost ||
+			r.URL.Path != "/api2/json/nodes/PVE-01/lxc/101/status/start" {
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cfg := new(config.ProxmoxConfig)
+	cfg.URL = server.URL
+	client := New(*cfg)
+
+	err := client.StartGuest(t.Context(), "pve_1", "lxc", 101)
+	if !errors.Is(err, ErrUnavailable) {
+		t.Errorf("StartGuest with invalid node = %v, want ErrUnavailable", err)
+	}
+
+	if got := requests.Load(); got != 0 {
+		t.Errorf("StartGuest with invalid node sent %d requests, want 0", got)
+	}
+
+	err = client.StartGuest(t.Context(), "PVE-01", "lxc", 101)
+	if err != nil {
+		t.Fatalf("StartGuest with valid node: %v", err)
+	}
+
+	if got := requests.Load(); got != 1 {
+		t.Errorf("StartGuest sent %d requests, want 1", got)
+	}
+}
 
 func TestSummary(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
