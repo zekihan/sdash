@@ -116,6 +116,7 @@ mapped into Tailwind via `@theme inline`.
 ### Build
 
 Goreleaser builds binaries; its before-hook runs `npm --prefix web run build`
-(deps installed via `.github/scripts/install_build_deps.sh` = `npm ci`, the
-only approved install script is esbuild's). The Dockerfile packages prepared
+(deps installed via `.github/scripts/install_build_deps.sh` with npm install
+scripts disabled). `make lint` checks Linux-relevant dependency install scripts
+against `web/package.json`'s `allowScripts`. The Dockerfile packages prepared
 `dist/` binaries into distroless as user 25000 — it runs no toolchain itself.
