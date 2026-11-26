@@ -103,6 +103,7 @@ func run() error {
 	)
 	httpServer.ReadHeaderTimeout = readHeaderTimeout
 	httpServer.IdleTimeout = idleTimeout
+	httpServer.RegisterOnShutdown(srv.CloseEvents)
 
 	slog.InfoContext(ctx, "Listening on http://"+addr,
 		slog.String("baseUrl", cfg.WebConfig.BaseURL))

@@ -3,6 +3,8 @@ package server
 import (
 	"bufio"
 	"context"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
@@ -232,6 +234,53 @@ func TestSSEDisconnectCleansUpHubSubscription(t *testing.T) {
 	case <-broadcastDone:
 	case <-time.After(2 * time.Second):
 		t.Fatal("broadcast blocked after disconnect")
+	}
+}
+
+func TestShutdownEndsEventStreams(t *testing.T) {
+	cfg := config.GetDefaultConfig()
+	deps := actionDeps(cfg)
+	deps.Monitor = health.New(cfg.Health, func() []*dashboard.Service { return nil })
+	srv := New(deps)
+
+	ts := httptest.NewUnstartedServer(srv.Handler())
+	ts.Config.RegisterOnShutdown(srv.CloseEvents)
+	ts.Start()
+	t.Cleanup(ts.Close)
+
+	resp, reader, cancelClient := sseClient(t, ts.URL+"/api/events")
+	defer cancelClient()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("events status = %d, want 200", resp.StatusCode)
+	}
+
+	// Confirm the stream is active before starting shutdown.
+	eventType, _ := readSSEEvent(t, reader)
+	if eventType != "health" {
+		t.Fatalf("initial event = %q, want health", eventType)
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	err := ts.Config.Shutdown(ctx)
+	elapsed := time.Since(start)
+	t.Logf("Shutdown returned %v after %s", err, elapsed.Round(time.Millisecond))
+
+	if err != nil {
+		t.Fatalf("shutdown with an open event stream: %v", err)
+	}
+
+	if elapsed >= time.Second {
+		t.Errorf("shutdown took %s, want under 1s", elapsed)
+	}
+
+	_, err = reader.ReadByte()
+	if !errors.Is(err, io.EOF) {
+		t.Errorf("reading ended event stream: got %v, want EOF", err)
 	}
 }
 

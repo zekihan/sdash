@@ -59,9 +59,11 @@ type Deps struct {
 
 // Server owns the mux and the SSE hub.
 type Server struct {
-	hub  *hub
-	mux  *http.ServeMux
-	deps Deps
+	deps            Deps
+	hub             *hub
+	mux             *http.ServeMux
+	eventsDone      chan struct{}
+	closeEventsOnce sync.Once
 }
 
 // New builds a Server with all routes registered.
@@ -70,6 +72,7 @@ func New(deps *Deps) *Server {
 	srv.deps = *deps
 	srv.hub = newHub()
 	srv.mux = http.NewServeMux()
+	srv.eventsDone = make(chan struct{})
 	srv.routes()
 
 	return srv
@@ -78,6 +81,13 @@ func New(deps *Deps) *Server {
 // Handler returns the root handler.
 func (srv *Server) Handler() http.Handler {
 	return srv.mux
+}
+
+// CloseEvents signals all event streams to end during HTTP shutdown.
+func (srv *Server) CloseEvents() {
+	srv.closeEventsOnce.Do(func() {
+		close(srv.eventsDone)
+	})
 }
 
 // NotifyConfig pushes a config event to every connected browser.
@@ -423,6 +433,8 @@ func (srv *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-r.Context().Done():
+			return
+		case <-srv.eventsDone:
 			return
 		case <-heartbeat.C:
 			_, writeErr := w.Write([]byte(": ping\n\n"))
