@@ -197,6 +197,7 @@ export interface Pbs {
   recentFailures: number;
   lastBackupOk: boolean;
   hasBackups: boolean;
+  tasksUnavailable: boolean;
   available: boolean;
 }
 

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strings"
@@ -39,15 +40,16 @@ type Datastore struct {
 
 // Summary is the dashboard-facing PBS overview.
 type Summary struct {
-	Datastores     []Datastore `json:"datastores"`
-	Used           uint64      `json:"used"`
-	Total          uint64      `json:"total"`
-	LastBackupAt   int64       `json:"lastBackupAt"`
-	RecentTotal    int         `json:"recentTotal"`
-	RecentFailures int         `json:"recentFailures"`
-	LastBackupOK   bool        `json:"lastBackupOk"`
-	HasBackups     bool        `json:"hasBackups"`
-	Available      bool        `json:"available"`
+	Datastores       []Datastore `json:"datastores"`
+	Used             uint64      `json:"used"`
+	Total            uint64      `json:"total"`
+	LastBackupAt     int64       `json:"lastBackupAt"`
+	RecentTotal      int         `json:"recentTotal"`
+	RecentFailures   int         `json:"recentFailures"`
+	LastBackupOK     bool        `json:"lastBackupOk"`
+	HasBackups       bool        `json:"hasBackups"`
+	TasksUnavailable bool        `json:"tasksUnavailable"`
+	Available        bool        `json:"available"`
 }
 
 type apiDatastoreUsage struct {
@@ -134,12 +136,17 @@ func (client *Client) Summary(ctx context.Context) (*Summary, error) {
 		return summary.Datastores[first].Name < summary.Datastores[second].Name
 	})
 
-	client.addBackupTasks(ctx, summary)
+	err = client.addBackupTasks(ctx, summary)
+	if err != nil {
+		summary.TasksUnavailable = true
+
+		slog.WarnContext(ctx, "PBS backup task fetch failed")
+	}
 
 	return summary, nil
 }
 
-func (client *Client) addBackupTasks(ctx context.Context, summary *Summary) {
+func (client *Client) addBackupTasks(ctx context.Context, summary *Summary) error {
 	tasks := new(apiList[apiTask])
 
 	path := fmt.Sprintf(
@@ -150,7 +157,7 @@ func (client *Client) addBackupTasks(ctx context.Context, summary *Summary) {
 
 	err := client.getJSON(ctx, path, tasks)
 	if err != nil {
-		return
+		return err
 	}
 
 	for _, task := range tasks.Data {
@@ -171,6 +178,8 @@ func (client *Client) addBackupTasks(ctx context.Context, summary *Summary) {
 			summary.HasBackups = true
 		}
 	}
+
+	return nil
 }
 
 func (client *Client) getJSON(ctx context.Context, apiPath string, out any) error {

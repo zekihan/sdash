@@ -359,15 +359,21 @@ export function PbsBlock({ pbs, expanded, onToggle }: { pbs: Pbs; expanded: bool
     <div className="min-w-0">
       <BlockLabel>backups · proxmox bs</BlockLabel>
       <button type="button" onClick={onToggle} className="mt-1 flex items-center gap-2 text-left" aria-expanded={expanded}>
-        <span className="font-mono stat-value text-[34px] leading-none font-medium tracking-tight text-ink">
-          {pbs.hasBackups ? (pbs.lastBackupOk ? "ok" : "fail") : "—"}
-          <span className="text-lg text-ink-3"> last backup</span>
-        </span>
+        {pbs.tasksUnavailable ? (
+          <span className="font-mono text-lg text-slow">Backup status unavailable</span>
+        ) : pbs.hasBackups ? (
+          <span className="font-mono stat-value text-[34px] leading-none font-medium tracking-tight text-ink">
+            {pbs.lastBackupOk ? "ok" : "fail"}
+            <span className="text-lg text-ink-3"> last backup</span>
+          </span>
+        ) : (
+          <span className="font-mono text-lg text-ink-3">No backups</span>
+        )}
         <ChevronDownIcon size={16} className={`text-ink-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
       </button>
       <p className="mt-1.5 text-[13px] text-ink-2">
         {formatBytes(pbs.used)}/{formatBytes(pbs.total)} ({usedPct.toFixed(0)}%)
-        {pbs.recentFailures > 0 && (
+        {!pbs.tasksUnavailable && pbs.recentFailures > 0 && (
           <span className="text-down">
             {" "}
             · {pbs.recentFailures}/{pbs.recentTotal} recent failed

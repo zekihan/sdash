@@ -191,13 +191,22 @@ export function buildAttentionItems(input: Inputs): AttentionItem[] {
     }
   }
 
-  if (input.pbs?.available && input.pbs.hasBackups && !input.pbs.lastBackupOk) {
+  const pbs = input.pbs;
+  if (pbs?.available && pbs.tasksUnavailable) {
+    items.push({
+      id: "pbs-tasks-unavailable",
+      severity: "slow",
+      source: "backups",
+      label: "Backup status unavailable",
+      detail: "PBS task history could not be read",
+    });
+  } else if (pbs?.available && pbs.hasBackups && !pbs.lastBackupOk) {
     items.push({
       id: "pbs-last-backup",
       severity: "down",
       source: "backups",
       label: "Last backup failed",
-      detail: new Date(input.pbs.lastBackupAt * 1000).toLocaleString(),
+      detail: new Date(pbs.lastBackupAt * 1000).toLocaleString(),
     });
   }
 
