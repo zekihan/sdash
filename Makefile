@@ -35,7 +35,11 @@ dev: web
 tidy:
 	${GO_EXECUTABLE} fmt ./...
 	${GO_EXECUTABLE} mod tidy -v
-	@test -d web/node_modules && npm --prefix web run typecheck || echo "skip: web typecheck (run 'make web' first)"
+	@if [ -d web/node_modules ]; then \
+		npm --prefix web run typecheck; \
+	else \
+		echo "skip: web typecheck (web/node_modules is missing; run 'make web' first)"; \
+	fi
 
 ## lint: run linter
 .PHONY: lint
