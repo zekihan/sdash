@@ -491,8 +491,23 @@ func TestProxmoxStartValidationAndBackend(t *testing.T) {
 		t,
 		postAction(t, handler, "/api/actions/proxmox-start", `{"vmid":100}`),
 		http.StatusBadRequest,
-		"node and vmid are required",
+		"invalid node",
 	)
+	expectActionError(
+		t,
+		postAction(
+			t,
+			handler,
+			"/api/actions/proxmox-start",
+			`{"node":"pve_1","kind":"qemu","vmid":100}`,
+		),
+		http.StatusBadRequest,
+		"invalid node",
+	)
+
+	if len(rec.all()) != 0 {
+		t.Fatal("invalid request reached the proxmox backend")
+	}
 
 	if r := postAction(
 		t, handler,
@@ -503,7 +518,8 @@ func TestProxmoxStartValidationAndBackend(t *testing.T) {
 	}
 
 	got := rec.all()
-	if len(got) != 1 || got[0].Path != "/api2/json/nodes/pve1/qemu/100/status/start" {
+	if len(got) != 1 || got[0].Method != http.MethodPost ||
+		got[0].Path != "/api2/json/nodes/pve1/qemu/100/status/start" {
 		t.Errorf("proxmox backend = %+v, want start POST for qemu/100", got)
 	}
 

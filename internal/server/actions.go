@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/zekihan/sdash/internal/proxmoxinfo"
 )
 
 var errInvalidMAC = errors.New("invalid MAC address")
@@ -174,8 +176,14 @@ func (srv *Server) handleProxmoxStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if request.Node == "" || request.VMID <= 0 {
+	if request.VMID <= 0 {
 		writeError(w, http.StatusBadRequest, "node and vmid are required")
+
+		return
+	}
+
+	if !proxmoxinfo.ValidNodeName(request.Node) {
+		writeError(w, http.StatusBadRequest, "invalid node")
 
 		return
 	}

@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -25,8 +27,9 @@ const (
 )
 
 var (
-	ErrUnavailable = errors.New("proxmox API unavailable")
-	ErrBadResponse = errors.New("invalid proxmox API response")
+	ErrUnavailable  = errors.New("proxmox API unavailable")
+	ErrBadResponse  = errors.New("invalid proxmox API response")
+	nodeNamePattern = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$`)
 )
 
 // Node is one cluster node's state.
@@ -240,13 +243,22 @@ func (summary *Summary) addStorage(resource *apiResource) {
 	summary.Storage = append(summary.Storage, *storage)
 }
 
+// ValidNodeName reports whether node is a single ASCII DNS label.
+func ValidNodeName(node string) bool {
+	return nodeNamePattern.MatchString(node)
+}
+
 // StartGuest starts a stopped VM (qemu) or container (lxc).
 func (client *Client) StartGuest(ctx context.Context, node, kind string, vmid int) error {
+	if !ValidNodeName(node) {
+		return fmt.Errorf("%w: invalid node", ErrUnavailable)
+	}
+
 	if kind != "qemu" && kind != "lxc" {
 		return fmt.Errorf("%w: unsupported guest kind %q", ErrUnavailable, kind)
 	}
 
-	path := fmt.Sprintf("/api2/json/nodes/%s/%s/%d/status/start", node, kind, vmid)
+	path := fmt.Sprintf("/api2/json/nodes/%s/%s/%d/status/start", url.PathEscape(node), kind, vmid)
 
 	reqCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
