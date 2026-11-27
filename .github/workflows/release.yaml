@@ -59,7 +59,7 @@ jobs:
         else
           RELEASE_VERSION=$(cat VERSION) goreleaser build --clean --id docker --snapshot
         fi
-      node-version: 24.22.2
+      node-version: '24.22.2' # renovate: depName=node datasource=node-version versioning=node
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -78,7 +78,7 @@ jobs:
       binaries: true
       image: sdash
       image-digest: ${{ needs.publish.outputs.digest }}
-      node-version: 24.22.2
+      node-version: '24.22.2' # renovate: depName=node datasource=node-version versioning=node
       prepare-command: |
         bash .github/scripts/install_build_deps.sh
     secrets:

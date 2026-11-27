@@ -23,9 +23,10 @@ jobs:
   checks:
     uses: zekihan/release-workflows/.github/workflows/go-checks.yaml@98a85ab2b0ae4dd702aa142b1369277404f124df # main
     with:
-      node-version: '26.x'
+      node-version: '24.22.2' # renovate: depName=node datasource=node-version versioning=node
       node-cache-dependency-path: web/package-lock.json
       prepare-command: |
+        node .github/scripts/check_node_version.mjs
         sudo apt-get update -qq
         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends make build-essential
         sh .github/scripts/install_build_deps.sh
